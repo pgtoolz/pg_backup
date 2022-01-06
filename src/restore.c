@@ -917,8 +917,10 @@ restore_chain(pgBackup *dest_backup, parray *parent_chain,
 
 				join_path_components(fullpath, pgdata_path, file->rel_path);
 
-				fio_delete(file->mode, fullpath, FIO_DB_HOST);
-				elog(LOG, "Deleted file \"%s\"", fullpath);
+				if (fio_remove(fullpath, false, FIO_DB_HOST) == 0)
+					elog(VERBOSE, "Deleted file \"%s\"", fullpath);
+				else
+					elog(ERROR, "Cannot delete redundant file \"%s\": %s", fullpath, strerror(errno));
 
 				/* shrink pgdata list */
 				pgFileFree(file);

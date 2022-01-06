@@ -345,8 +345,8 @@ typedef enum ShowFormat
 #define PROGRAM_VERSION	"2.5.11"
 
 /* update when remote agent API or behaviour changes */
-#define AGENT_PROTOCOL_VERSION 20509
-#define AGENT_PROTOCOL_VERSION_STR "2.5.9"
+#define AGENT_PROTOCOL_VERSION 20600
+#define AGENT_PROTOCOL_VERSION_STR "2.6.0"
 
 /* update only when changing storage format */
 #define STORAGE_FORMAT_VERSION "2.4.4"
@@ -1077,9 +1077,6 @@ extern pgFile *pgFileNew(const char *path, const char *rel_path,
 						 bool follow_symlink, int external_dir_num,
 						 fio_location location);
 extern pgFile *pgFileInit(const char *rel_path);
-extern void pgFileDelete(mode_t mode, const char *full_path);
-extern void fio_pgFileDelete(pgFile *file, const char *full_path);
-
 extern void pgFileFree(void *file);
 
 extern pg_crc32 pgFileGetCRC(const char *file_path, bool use_crc32c, bool missing_ok);
@@ -1238,7 +1235,6 @@ extern int copy_pages(const char *to_fullpath, const char *from_fullpath,
 
 /* FIO */
 extern void setMyLocation(ProbackupSubcmd const subcmd);
-extern void fio_delete(mode_t mode, const char *fullpath, fio_location location);
 extern int fio_send_pages(const char *to_fullpath, const char *from_fullpath, pgFile *file,
 	                      XLogRecPtr horizonLsn, int calg, int clevel, uint32 checksum_version,
 	                      bool use_pagemap, BlockNumber *err_blknum, char **errormsg,
