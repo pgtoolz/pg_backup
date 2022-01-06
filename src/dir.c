@@ -230,38 +230,6 @@ pgFileInit(const char *rel_path)
 	return file;
 }
 
-/*
- * Delete file pointed by the pgFile.
- * If the pgFile points directory, the directory must be empty.
- */
-void
-pgFileDelete(mode_t mode, const char *full_path)
-{
-	if (S_ISDIR(mode))
-	{
-		if (rmdir(full_path) == -1)
-		{
-			if (errno == ENOENT)
-				return;
-			else if (errno == ENOTDIR)	/* could be symbolic link */
-				goto delete_file;
-
-			elog(ERROR, "Cannot remove directory \"%s\": %s",
-				full_path, strerror(errno));
-		}
-		return;
-	}
-
-delete_file:
-	if (remove(full_path) == -1)
-	{
-		if (errno == ENOENT)
-			return;
-		elog(ERROR, "Cannot remove file \"%s\": %s", full_path,
-			strerror(errno));
-	}
-}
-
 void
 pgFileFree(void *file)
 {
@@ -1651,9 +1619,11 @@ write_database_map(pgBackup *backup, parray *database_map, parray *backup_files_
 	print_database_map(fp, database_map);
 	if (fio_fflush(fp) || fio_fclose(fp))
 	{
-		fio_unlink(database_map_path, FIO_BACKUP_HOST);
+		int save_errno = errno;
+		if (fio_remove(database_map_path, false, FIO_BACKUP_HOST) != 0)
+			elog(WARNING, "Cannot cleanup database map \"%s\": %s", database_map_path, strerror(errno));
 		elog(ERROR, "Cannot write database map \"%s\": %s",
-			 database_map_path, strerror(errno));
+			 database_map_path, strerror(save_errno));
 	}
 
 	/* Add metadata to backup_content.control */
@@ -1747,8 +1717,10 @@ cleanup_tablespace(const char *path)
 
 		join_path_components(fullpath, path, file->rel_path);
 
-		fio_delete(file->mode, fullpath, FIO_DB_HOST);
-		elog(LOG, "Deleted file \"%s\"", fullpath);
+		if (fio_remove(fullpath, false, FIO_DB_HOST) == 0)
+			elog(VERBOSE, "Deleted file \"%s\"", fullpath);
+		else
+			elog(ERROR, "Cannot delete file or directory \"%s\": %s", fullpath, strerror(errno));
 	}
 
 	parray_walk(files, pgFileFree);
