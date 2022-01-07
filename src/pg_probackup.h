@@ -1070,7 +1070,6 @@ extern bool backup_contains_external(const char *dir, parray *dirs_list);
 extern bool dir_is_empty(const char *path, fio_location location);
 
 extern bool fileExists(const char *path, fio_location location);
-extern size_t pgFileSize(const char *path);
 
 extern pgFile *pgFileNew(const char *path, const char *rel_path,
 						 bool follow_symlink, int external_dir_num,
