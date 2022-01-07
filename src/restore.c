@@ -1199,13 +1199,15 @@ restore_files(void *arg)
 		{
 			if (arguments->incremental_mode == INCR_LSN)
 			{
-				lsn_map = fio_get_lsn_map(FIO_DB_HOST, to_fullpath, arguments->dest_backup->checksum_version,
+				lsn_map = fio_get_lsn_map(FIO_DB_HOST, to_fullpath,
+								arguments->dest_backup->checksum_version,
 								dest_file->n_blocks, arguments->shift_lsn,
 								dest_file->segno * RELSEG_SIZE);
 			}
 			else if (arguments->incremental_mode == INCR_CHECKSUM)
 			{
-				checksum_map = fio_get_checksum_map(FIO_DB_HOST, to_fullpath, arguments->dest_backup->checksum_version,
+				checksum_map = fio_get_checksum_map(FIO_DB_HOST, to_fullpath,
+													arguments->dest_backup->checksum_version,
 													dest_file->n_blocks, arguments->dest_backup->stop_lsn,
 													dest_file->segno * RELSEG_SIZE);
 			}
