@@ -73,7 +73,7 @@ void wait_ssh(void)
 	elog(LOG, "SSH process %d is terminated with status %d",  child_pid, status);
 }
 
-static bool needs_quotes(char const* path)
+static bool needs_quotes(const char* path)
 {
 	return strchr(path, ' ') != NULL;
 }
@@ -124,7 +124,7 @@ bool launch_agent(void)
 
 	if (instance_config.remote.path)
 	{
-		char const* probackup = PROGRAM_NAME_FULL;
+		const char* probackup = PROGRAM_NAME_FULL;
 		char* sep = strrchr(probackup, '/');
 		if (sep != NULL) {
 			probackup = sep + 1;
