@@ -807,9 +807,9 @@ backup_non_data_file(pgFile *file, pgFile *prev_file,
 		 * But then backup_non_data_file_internal will handle it safely
 		 */
 		if (file->forkName != cfm)
-			file->crc = fio_get_crc32(from_fullpath, FIO_DB_HOST, false, true);
+			file->crc = fio_get_crc32(FIO_DB_HOST, from_fullpath, false, true);
 		else
-			file->crc = fio_get_crc32_truncated(from_fullpath, FIO_DB_HOST, true);
+			file->crc = fio_get_crc32_truncated(FIO_DB_HOST, from_fullpath, true);
 
 		/* ...and checksum is the same... */
 		if (EQ_TRADITIONAL_CRC32(file->crc, prev_file->crc))
@@ -1337,9 +1337,9 @@ restore_non_data_file(parray *parent_chain, pgBackup *dest_backup,
 		pg_crc32 file_crc;
 		if (tmp_file->forkName == cfm &&
 			    tmp_file->uncompressed_size > tmp_file->write_size)
-			file_crc = fio_get_crc32_truncated(to_fullpath, FIO_DB_HOST, false);
+			file_crc = fio_get_crc32_truncated(FIO_DB_HOST, to_fullpath, false);
 		else
-			file_crc = fio_get_crc32(to_fullpath, FIO_DB_HOST, false, false);
+			file_crc = fio_get_crc32(FIO_DB_HOST, to_fullpath, false, false);
 
 		if (file_crc == tmp_file->crc)
 		{
@@ -1475,14 +1475,14 @@ create_empty_file(fio_location from_location, const char *to_root,
 
 	/* open file for write  */
 	join_path_components(to_path, to_root, file->rel_path);
-	out = fio_fopen(to_path, PG_BINARY_W, to_location);
+	out = fio_fopen(to_location, to_path, PG_BINARY_W);
 
 	if (out == NULL)
 		elog(ERROR, "Cannot open destination file \"%s\": %s",
 			 to_path, strerror(errno));
 
 	/* update file permission */
-	if (fio_chmod(to_path, file->mode, to_location) == -1)
+	if (fio_chmod(to_location, to_path, file->mode) == -1)
 		elog(ERROR, "Cannot change mode of \"%s\": %s", to_path,
 			 strerror(errno));
 
@@ -2221,7 +2221,7 @@ copy_pages(const char *to_fullpath, const char *from_fullpath,
 		setvbuf(in, in_buf, _IOFBF, STDIO_BUFSIZE);
 	}
 
-	out = fio_fopen(to_fullpath, PG_BINARY_R "+", FIO_BACKUP_HOST);
+	out = fio_fopen(FIO_BACKUP_HOST, to_fullpath, PG_BINARY_R "+");
 	if (out == NULL)
 		elog(ERROR, "Cannot open destination file \"%s\": %s",
 			 to_fullpath, strerror(errno));
