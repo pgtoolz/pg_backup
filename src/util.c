@@ -106,7 +106,7 @@ digestControlFile(ControlFileData *ControlFile, char *src, size_t size)
  * Write ControlFile to pg_control
  */
 static void
-writeControlFile(ControlFileData *ControlFile, const char *path, fio_location location)
+writeControlFile(fio_location location, const char *path, ControlFileData *ControlFile)
 {
 	int			fd;
 	char       *buffer = NULL;
@@ -156,7 +156,7 @@ get_current_timeline(PGconn *conn)
 	if (PQresultStatus(res) == PGRES_TUPLES_OK)
 		val = PQgetvalue(res, 0, 0);
 	else
-		return get_current_timeline_from_control(instance_config.pgdata, FIO_DB_HOST, false);
+		return get_current_timeline_from_control(FIO_DB_HOST, instance_config.pgdata, false);
 
 	if (!parse_uint32(val, &tli, 0))
 	{
@@ -164,7 +164,7 @@ get_current_timeline(PGconn *conn)
 		elog(WARNING, "Invalid value of timeline_id %s", val);
 
 		/* TODO 3.0 remove it and just error out */
-		return get_current_timeline_from_control(instance_config.pgdata, FIO_DB_HOST, false);
+		return get_current_timeline_from_control(FIO_DB_HOST, instance_config.pgdata, false);
 	}
 
 	return tli;
@@ -172,15 +172,15 @@ get_current_timeline(PGconn *conn)
 
 /* Get timeline from pg_control file */
 TimeLineID
-get_current_timeline_from_control(const char *pgdata_path, fio_location location, bool safe)
+get_current_timeline_from_control(fio_location location, const char *pgdata_path, bool safe)
 {
 	ControlFileData ControlFile;
 	char       *buffer;
 	size_t      size;
 
 	/* First fetch file... */
-	buffer = slurpFile(pgdata_path, XLOG_CONTROL_FILE, &size,
-					   safe, location);
+	buffer = slurpFile(location, pgdata_path, XLOG_CONTROL_FILE,
+					   &size, safe);
 	if (safe && buffer == NULL)
 		return 0;
 
@@ -218,11 +218,12 @@ get_checkpoint_location(PGconn *conn)
 
 	return lsn;
 #else
+	/* PG-9.5 */
 	char	   *buffer;
 	size_t		size;
 	ControlFileData ControlFile;
 
-	buffer = slurpFile(instance_config.pgdata, XLOG_CONTROL_FILE, &size, false, FIO_DB_HOST);
+	buffer = slurpFile(FIO_DB_HOST, instance_config.pgdata, XLOG_CONTROL_FILE, &size, false);
 	digestControlFile(&ControlFile, buffer, size);
 	pg_free(buffer);
 
@@ -231,14 +232,14 @@ get_checkpoint_location(PGconn *conn)
 }
 
 uint64
-get_system_identifier(const char *pgdata_path, fio_location location, bool safe)
+get_system_identifier(fio_location location, const char *pgdata_path, bool safe)
 {
 	ControlFileData ControlFile;
 	char	   *buffer;
 	size_t		size;
 
 	/* First fetch file... */
-	buffer = slurpFile(pgdata_path, XLOG_CONTROL_FILE, &size, safe, location);
+	buffer = slurpFile(location, pgdata_path, XLOG_CONTROL_FILE, &size, safe);
 	if (safe && buffer == NULL)
 		return 0;
 	digestControlFile(&ControlFile, buffer, size);
@@ -268,11 +269,12 @@ get_remote_system_identifier(PGconn *conn)
 
 	return system_id_conn;
 #else
+	/* PG-9.5 */
 	char	   *buffer;
 	size_t		size;
 	ControlFileData ControlFile;
 
-	buffer = slurpFile(instance_config.pgdata, XLOG_CONTROL_FILE, &size, false, FIO_DB_HOST);
+	buffer = slurpFile(FIO_DB_HOST, instance_config.pgdata, XLOG_CONTROL_FILE, &size, false);
 	digestControlFile(&ControlFile, buffer, size);
 	pg_free(buffer);
 
@@ -289,7 +291,7 @@ get_xlog_seg_size(const char *pgdata_path)
 	size_t		size;
 
 	/* First fetch file... */
-	buffer = slurpFile(pgdata_path, XLOG_CONTROL_FILE, &size, false, FIO_DB_HOST);
+	buffer = slurpFile(FIO_DB_HOST, pgdata_path, XLOG_CONTROL_FILE, &size, false);
 	digestControlFile(&ControlFile, buffer, size);
 	pg_free(buffer);
 
@@ -307,8 +309,8 @@ get_data_checksum_version(bool safe)
 	size_t		size;
 
 	/* First fetch file... */
-	buffer = slurpFile(instance_config.pgdata, XLOG_CONTROL_FILE, &size,
-					   safe, FIO_DB_HOST);
+	buffer = slurpFile(FIO_DB_HOST, instance_config.pgdata, XLOG_CONTROL_FILE,
+					   &size, safe);
 	if (buffer == NULL)
 		return 0;
 	digestControlFile(&ControlFile, buffer, size);
@@ -325,7 +327,7 @@ get_pgcontrol_checksum(const char *pgdata_path)
 	size_t		size;
 
 	/* First fetch file... */
-	buffer = slurpFile(pgdata_path, XLOG_CONTROL_FILE, &size, false, FIO_BACKUP_HOST);
+	buffer = slurpFile(FIO_BACKUP_HOST, pgdata_path, XLOG_CONTROL_FILE, &size, false);
 
 	digestControlFile(&ControlFile, buffer, size);
 	pg_free(buffer);
@@ -334,14 +336,14 @@ get_pgcontrol_checksum(const char *pgdata_path)
 }
 
 void
-get_redo(const char *pgdata_path, fio_location pgdata_location, RedoParams *redo)
+get_redo(fio_location location, const char *pgdata_path, RedoParams *redo)
 {
 	ControlFileData ControlFile;
 	char	   *buffer;
 	size_t		size;
 
 	/* First fetch file... */
-	buffer = slurpFile(pgdata_path, XLOG_CONTROL_FILE, &size, false, pgdata_location);
+	buffer = slurpFile(location, pgdata_path, XLOG_CONTROL_FILE, &size, false);
 
 	digestControlFile(&ControlFile, buffer, size);
 	pg_free(buffer);
@@ -380,7 +382,7 @@ set_min_recovery_point(pgFile *file, const char *backup_path,
 	char		fullpath[MAXPGPATH];
 
 	/* First fetch file content */
-	buffer = slurpFile(instance_config.pgdata, XLOG_CONTROL_FILE, &size, false, FIO_DB_HOST);
+	buffer = slurpFile(FIO_DB_HOST, instance_config.pgdata, XLOG_CONTROL_FILE, &size, false);
 	digestControlFile(&ControlFile, buffer, size);
 
 	elog(LOG, "Current minRecPoint %X/%X",
@@ -401,7 +403,7 @@ set_min_recovery_point(pgFile *file, const char *backup_path,
 
 	/* overwrite pg_control */
 	join_path_components(fullpath, backup_path, XLOG_CONTROL_FILE);
-	writeControlFile(&ControlFile, fullpath, FIO_LOCAL_HOST);
+	writeControlFile(FIO_LOCAL_HOST, fullpath, &ControlFile);
 
 	/* Update pg_control checksum in backup_list */
 	file->crc = ControlFile.crc;
@@ -413,14 +415,14 @@ set_min_recovery_point(pgFile *file, const char *backup_path,
  * Copy pg_control file to backup. We do not apply compression to this file.
  */
 void
-copy_pgcontrol_file(const char *from_fullpath, fio_location from_location,
-					const char *to_fullpath, fio_location to_location, pgFile *file)
+copy_pgcontrol_file(fio_location from_location, const char *from_fullpath,
+					fio_location to_location, const char *to_fullpath, pgFile *file)
 {
 	ControlFileData ControlFile;
 	char	   *buffer;
 	size_t		size;
 
-	buffer = slurpFile(from_fullpath, "", &size, false, from_location);
+	buffer = slurpFile(from_location, from_fullpath, "", &size, false);
 
 	digestControlFile(&ControlFile, buffer, size);
 
@@ -429,7 +431,7 @@ copy_pgcontrol_file(const char *from_fullpath, fio_location from_location,
 	file->write_size = size;
 	file->uncompressed_size = size;
 
-	writeControlFile(&ControlFile, to_fullpath, to_location);
+	writeControlFile(to_location, to_fullpath, &ControlFile);
 
 	pg_free(buffer);
 }
