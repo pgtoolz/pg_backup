@@ -533,17 +533,19 @@ fio_close(int fd)
 {
 	if (fio_is_remote_fd(fd))
 	{
-		fio_header hdr;
+		fio_header hdr = {
+			.cop = FIO_CLOSE,
+			.handle = fd & ~FIO_PIPE_MARKER,
+			.size = 0,
+			.arg = 0,
+		};
 
-		hdr.cop = FIO_CLOSE;
-		hdr.handle = fd & ~FIO_PIPE_MARKER;
-		hdr.size = 0;
 		fio_fdset &= ~(1 << hdr.handle);
-
 		IO_CHECK(fio_write_all(fio_stdout, &hdr, sizeof(hdr)), sizeof(hdr));
 
 		/* Wait for response */
 		IO_CHECK(fio_read_all(fio_stdin, &hdr, sizeof(hdr)), sizeof(hdr));
+		Assert(hdr.arg == FIO_CLOSE);
 
 		if (hdr.arg != 0)
 		{
@@ -563,10 +565,12 @@ fio_close(int fd)
 static void
 fio_close_impl(int fd, int out)
 {
-	fio_header hdr;
-
-	hdr.cop = FIO_CLOSE;
-	hdr.arg = 0;
+	fio_header hdr = {
+		.cop = FIO_CLOSE,
+		.handle = -1,
+		.size = 0,
+		.arg = 0,
+	};
 
 	if (close(fd) != 0)
 		hdr.arg = errno;
@@ -592,12 +596,12 @@ fio_truncate(int fd, off_t size)
 {
 	if (fio_is_remote_fd(fd))
 	{
-		fio_header hdr;
-
-		hdr.cop = FIO_TRUNCATE;
-		hdr.handle = fd & ~FIO_PIPE_MARKER;
-		hdr.size = 0;
-		hdr.arg = size;
+		fio_header hdr = {
+			.cop = FIO_TRUNCATE,
+			.handle = fd & ~FIO_PIPE_MARKER,
+			.size = 0,
+			.arg = size,
+		};
 
 		IO_CHECK(fio_write_all(fio_stdout, &hdr, sizeof(hdr)), sizeof(hdr));
 
@@ -745,17 +749,19 @@ fio_write(int fd, void const* buf, size_t size)
 {
 	if (fio_is_remote_fd(fd))
 	{
-		fio_header hdr;
-
-		hdr.cop = FIO_WRITE;
-		hdr.handle = fd & ~FIO_PIPE_MARKER;
-		hdr.size = size;
+		fio_header hdr = {
+			.cop = FIO_WRITE,
+			.handle = fd & ~FIO_PIPE_MARKER,
+			.size = size,
+			.arg = 0,
+		};
 
 		IO_CHECK(fio_write_all(fio_stdout, &hdr, sizeof(hdr)), sizeof(hdr));
 		IO_CHECK(fio_write_all(fio_stdout, buf, size), size);
 
 		/* check results */
 		IO_CHECK(fio_read_all(fio_stdin, &hdr, sizeof(hdr)), sizeof(hdr));
+		Assert(hdr.arg == FIO_WRITE);
 
 		/* set errno */
 		if (hdr.arg > 0)
@@ -775,13 +781,15 @@ fio_write(int fd, void const* buf, size_t size)
 static void
 fio_write_impl(int fd, void const* buf, size_t size, int out)
 {
+	fio_header hdr = {
+		.cop = FIO_WRITE,
+		.handle = -1,
+		.size = 0,
+		.arg = 0,
+	};
 	int rc;
-	fio_header hdr;
 
 	rc = durable_write(fd, buf, size);
-
-	hdr.arg = 0;
-	hdr.size = 0;
 
 	if (rc < 0)
 		hdr.arg = errno;
@@ -810,19 +818,19 @@ fio_write_async(int fd, void const* buf, size_t size)
 
 	if (fio_is_remote_fd(fd))
 	{
-		fio_header hdr;
-
-		hdr.cop = FIO_WRITE_ASYNC;
-		hdr.handle = fd & ~FIO_PIPE_MARKER;
-		hdr.size = size;
+		fio_header hdr = {
+			.cop = FIO_WRITE_ASYNC,
+			.handle = fd & ~FIO_PIPE_MARKER,
+			.size = size,
+			.arg = 0,
+		};
 
 		IO_CHECK(fio_write_all(fio_stdout, &hdr, sizeof(hdr)), sizeof(hdr));
 		IO_CHECK(fio_write_all(fio_stdout, buf, size), size);
+		return size;
 	}
 	else
 		return durable_write(fd, buf, size);
-
-	return size;
 }
 
 static void
@@ -1019,12 +1027,12 @@ fio_read(int fd, void* buf, size_t size)
 {
 	if (fio_is_remote_fd(fd))
 	{
-		fio_header hdr;
-
-		hdr.cop = FIO_READ;
-		hdr.handle = fd & ~FIO_PIPE_MARKER;
-		hdr.size = 0;
-		hdr.arg = size;
+		fio_header hdr = {
+			.cop = FIO_READ,
+			.handle = fd & ~FIO_PIPE_MARKER,
+			.size = 0,
+			.arg = size,
+		};
 
 		IO_CHECK(fio_write_all(fio_stdout, &hdr, sizeof(hdr)), sizeof(hdr));
 
@@ -1046,16 +1054,15 @@ fio_stat(fio_location location, const char* path, struct stat* st, bool follow_s
 {
 	if (fio_is_remote(location))
 	{
-		fio_header hdr;
-		size_t path_len = strlen(path) + 1;
-
-		hdr.cop = FIO_STAT;
-		hdr.handle = -1;
-		hdr.arg = follow_symlink;
-		hdr.size = path_len;
+		fio_header hdr = {
+			.cop = FIO_STAT,
+			.handle = -1,
+			.size = strlen(path) + 1,
+			.arg = follow_symlink,
+		};
 
 		IO_CHECK(fio_write_all(fio_stdout, &hdr, sizeof(hdr)), sizeof(hdr));
-		IO_CHECK(fio_write_all(fio_stdout, path, path_len), path_len);
+		IO_CHECK(fio_write_all(fio_stdout, path, hdr.size), hdr.size);
 
 		IO_CHECK(fio_read_all(fio_stdin, &hdr, sizeof(hdr)), sizeof(hdr));
 		Assert(hdr.cop == FIO_STAT);
