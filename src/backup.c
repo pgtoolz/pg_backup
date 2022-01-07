@@ -241,7 +241,7 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 	if (current.backup_mode == BACKUP_MODE_DIFF_PAGE || !current.stream)
 	{
 		/* Check that archive_dir can be reached */
-		if (fio_access(instanceState->instance_wal_subdir_path, F_OK, FIO_BACKUP_HOST) != 0)
+		if (fio_access(FIO_BACKUP_HOST, instanceState->instance_wal_subdir_path, F_OK) != 0)
 			elog(ERROR, "WAL archive directory is not accessible \"%s\": %s",
 				instanceState->instance_wal_subdir_path, strerror(errno));
 
@@ -259,7 +259,7 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 		char stream_xlog_path[MAXPGPATH];
 
 		join_path_components(stream_xlog_path, current.database_dir, PG_XLOG_DIR);
-		fio_mkdir(stream_xlog_path, DIR_PERMISSION, FIO_BACKUP_HOST);
+		fio_mkdir(FIO_BACKUP_HOST, stream_xlog_path, DIR_PERMISSION);
 
 		start_WAL_streaming(backup_conn, stream_xlog_path, &instance_config.conn_opt,
 							current.start_lsn, current.tli, true);
@@ -412,7 +412,7 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 				join_path_components(dirpath, current.database_dir, file->rel_path);
 
 			elog(LOG, "Create directory '%s'", dirpath);
-			fio_mkdir(dirpath, DIR_PERMISSION, FIO_BACKUP_HOST);
+			fio_mkdir(FIO_BACKUP_HOST, dirpath, DIR_PERMISSION);
 		}
 
 	}
@@ -527,7 +527,7 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 	{
 		cleanup_header_map(&(current.hdr_map));
 
-		if (fio_sync(current.hdr_map.path, FIO_BACKUP_HOST) != 0)
+		if (fio_sync(FIO_BACKUP_HOST, current.hdr_map.path) != 0)
 			elog(ERROR, "Cannot sync file \"%s\": %s", current.hdr_map.path, strerror(errno));
 	}
 
@@ -586,7 +586,7 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 				join_path_components(to_fullpath, external_dst, file->rel_path);
 			}
 
-			if (fio_sync(to_fullpath, FIO_BACKUP_HOST) != 0)
+			if (fio_sync(FIO_BACKUP_HOST, to_fullpath) != 0)
 				elog(ERROR, "Cannot sync file \"%s\": %s", to_fullpath, strerror(errno));
 		}
 
@@ -1889,7 +1889,7 @@ pg_stop_backup_write_file_helper(const char *path, const char *filename, const c
 	char	full_filename[MAXPGPATH];
 
 	join_path_components(full_filename, path, filename);
-	fp = fio_fopen(full_filename, PG_BINARY_W, FIO_BACKUP_HOST);
+	fp = fio_fopen(FIO_BACKUP_HOST, full_filename, PG_BINARY_W);
 	if (fp == NULL)
 		elog(ERROR, "can't open %s file \"%s\": %s",
 			 error_msg_filename, full_filename, strerror(errno));
