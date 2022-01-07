@@ -712,7 +712,7 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 	join_path_components(dest_xlog_path, dest_pgdata, PG_XLOG_DIR);
 	if (!dry_run)
 	{
-		fio_mkdir(FIO_LOCAL_HOST, dest_xlog_path, DIR_PERMISSION);
+		fio_mkdir(FIO_LOCAL_HOST, dest_xlog_path, DIR_PERMISSION, false);
 		start_WAL_streaming(source_conn, dest_xlog_path, &instance_config.conn_opt,
 										current.start_lsn, current.tli, false);
 	}
@@ -832,7 +832,7 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 
 			elog(LOG, "Create directory '%s'", dirpath);
 			if (!dry_run)
-				fio_mkdir(FIO_LOCAL_HOST, dirpath, DIR_PERMISSION);
+				fio_mkdir(FIO_LOCAL_HOST, dirpath, DIR_PERMISSION, false);
 		}
 		else
 		{
@@ -866,7 +866,7 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 			if (!dry_run)
 			{
 				/* create tablespace directory */
-				if (fio_mkdir(FIO_LOCAL_HOST, linked_path, file->mode) != 0)
+				if (fio_mkdir(FIO_LOCAL_HOST, linked_path, file->mode, false) != 0)
 					elog(ERROR, "Could not create tablespace directory \"%s\": %s",
 						 linked_path, strerror(errno));
 
