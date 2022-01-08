@@ -545,7 +545,7 @@ fio_close(int fd)
 
 		/* Wait for response */
 		IO_CHECK(fio_read_all(fio_stdin, &hdr, sizeof(hdr)), sizeof(hdr));
-		Assert(hdr.arg == FIO_CLOSE);
+		Assert(hdr.cop == FIO_CLOSE);
 
 		if (hdr.arg != 0)
 		{
@@ -761,7 +761,7 @@ fio_write(int fd, void const* buf, size_t size)
 
 		/* check results */
 		IO_CHECK(fio_read_all(fio_stdin, &hdr, sizeof(hdr)), sizeof(hdr));
-		Assert(hdr.arg == FIO_WRITE);
+		Assert(hdr.cop == FIO_WRITE);
 
 		/* set errno */
 		if (hdr.arg > 0)
