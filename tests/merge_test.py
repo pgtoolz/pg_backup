@@ -1131,7 +1131,7 @@ class MergeTest(ProbackupTest, unittest.TestCase):
 
         gdb = self.merge_backup(backup_dir, "node", backup_id, gdb=True)
 
-        gdb.set_breakpoint('pgFileDelete')
+        gdb.set_breakpoint('fio_remove')
 
         gdb.run_until_break()
 
@@ -1611,7 +1611,7 @@ class MergeTest(ProbackupTest, unittest.TestCase):
         gdb.set_breakpoint('delete_backup_files')
         gdb.run_until_break()
 
-        gdb.set_breakpoint('pgFileDelete')
+        gdb.set_breakpoint('fio_remove')
         gdb.continue_execution_until_break(20)
 
         gdb._execute('signal SIGKILL')
@@ -1694,7 +1694,7 @@ class MergeTest(ProbackupTest, unittest.TestCase):
 #        gdb.set_breakpoint('parray_bsearch')
 #        gdb.continue_execution_until_break()
 
-        gdb.set_breakpoint('pgFileDelete')
+        gdb.set_breakpoint('fio_remove')
         gdb.continue_execution_until_break(30)
         gdb._execute('signal SIGKILL')
 
@@ -1755,7 +1755,7 @@ class MergeTest(ProbackupTest, unittest.TestCase):
             backup_dir, 'node', page_2, gdb=True,
             options=['--log-level-console=VERBOSE'])
 
-        gdb.set_breakpoint('pgFileDelete')
+        gdb.set_breakpoint('fio_remove')
         gdb.run_until_break()
         gdb.continue_execution_until_break(2)
         gdb._execute('signal SIGKILL')
@@ -1832,7 +1832,7 @@ class MergeTest(ProbackupTest, unittest.TestCase):
         gdb.set_breakpoint('delete_backup_files')
         gdb.run_until_break()
 
-        gdb.set_breakpoint('pgFileDelete')
+        gdb.set_breakpoint('fio_remove')
         gdb.continue_execution_until_break(20)
 
         gdb._execute('signal SIGKILL')
