@@ -45,6 +45,8 @@ jobs:
     continue-on-error: ${{ matrix.pg_version == 15 }}
 
   build-win2019:
+    name: pg_probackup-windows2019-v14
+
     runs-on:
       - windows-2019
 
