@@ -14,7 +14,7 @@ on:
 
 jobs:
   build-linux:
-    name: ${{ format('pg_probackup-{0}-v{1}', 'stretch', matrix.pg_version) }}
+    name: ${{ format('pg_probackup ({0}, v{1})', 'stretch', matrix.pg_version) }}
 
     strategy:
       matrix:
@@ -45,7 +45,7 @@ jobs:
     continue-on-error: ${{ matrix.pg_version == 15 }}
 
   build-win2019:
-    name: pg_probackup-windows2019-v14
+    name: pg_probackup (windows-2019, v14)
 
     runs-on:
       - windows-2019
