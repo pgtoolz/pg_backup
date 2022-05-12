@@ -26,7 +26,7 @@ jobs:
     env:
       PG_VERSION: ${{ matrix.pg_version }}
       PG_BRANCH: ${{ matrix.pg_version == 15 && 'master' || format('REL_{0}_STABLE', matrix.pg_version) }}
-      PTRACK_PATCH_PG_BRANCH: ${{ matrix.pg_version == 15 && 'master' || format('REL_{0}_STABLE', matrix.pg_version) }}
+      PTRACK_PATCH_PG_BRANCH: ${{ matrix.pg_version == 10 && 'off' || matrix.pg_version == 15 && 'master' || format('REL_{0}_STABLE', matrix.pg_version) }}
 
     steps:
       - uses: actions/checkout@v2
