@@ -13,9 +13,36 @@ on:
   workflow_dispatch:
 
 jobs:
+  build-linux:
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]
+        pg_version: [13, 14, 15]
+
+    runs-on:
+      - ubuntu-20.04
+
+    env:
+      PG_VERSION: ${{ matrix.pg_version }}
+      PG_BRANCH: ${{ matrix.pg_version == 15 && 'master' || format('REL_{0}_STABLE', matrix.pg_version) }}
+      PTRACK_PATCH_PG_BRANCH: ${{ matrix.pg_version == 15 && 'master' || format('REL_{0}_STABLE', matrix.pg_version) }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build the Docker image
+        run: |
+          cp travis/* .
+          ./make_dockerfile.sh
+          docker-compose build
+
+      - name: Run tests
+        run: |
+          docker-compose run tests
+
+    continue-on-error: ${{ matrix.pg_version == 15 }}
 
   build-win2019:
-
     runs-on:
       - windows-2019
 
@@ -23,7 +50,6 @@ jobs:
       zlib_dir: C:\dep\zlib
 
     steps:
-
       - uses: actions/checkout@v2
 
       - name: Install pacman packages
