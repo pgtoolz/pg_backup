@@ -14,7 +14,7 @@ on:
 
 jobs:
   build-linux:
-    name: ${{ format('pg_probackup-{0}-v{1}', matrix.pg_version), 'stretch' }}
+    name: ${{ format('pg_probackup-{0}-v{1}', matrix.pg_version, 'stretch') }}
 
     strategy:
       matrix:
