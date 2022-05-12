@@ -18,8 +18,7 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-20.04]
-        pg_version: [13, 14, 15]
+        pg_version: [10, 11, 12, 13, 14, 15]
 
     runs-on:
       - ubuntu-20.04
