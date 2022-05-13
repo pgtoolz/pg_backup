@@ -11,6 +11,13 @@ on:
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
+    inputs:
+      build_versions:
+        description: Build versions
+        default: 9.5, 9.6, 10, 13, 14, 15
+      test_mode:
+        description: Test mode
+        default: basic
 
 jobs:
   build-linux:
@@ -18,15 +25,15 @@ jobs:
 
     strategy:
       matrix:
-        pg_version: [10, 11, 12, 13, 14, 15]
+        pg_version: ${{ fromJSON(github.event.inputs.build_versions && format('[{0}]', github.event.inputs.build_versions) || '[9.5, 9.6, 10, 13, 14]') }}
 
     runs-on:
       - ubuntu-20.04
 
     env:
       PG_VERSION: ${{ matrix.pg_version }}
-      PG_BRANCH: ${{ matrix.pg_version == 15 && 'master' || format('REL_{0}_STABLE', matrix.pg_version) }}
-      PTRACK_PATCH_PG_BRANCH: ${{ matrix.pg_version == 10 && 'off' || matrix.pg_version == 15 && 'master' || format('REL_{0}_STABLE', matrix.pg_version) }}
+      PG_BRANCH: ${{ matrix.pg_version == 9.5 && 'REL9_5_STABLE' || matrix.pg_version == 9.6 && 'REL9_6_STABLE' || matrix.pg_version == 15 && 'master' || format('REL_{0}_STABLE', matrix.pg_version) }}
+      PTRACK_PATCH_PG_BRANCH: ${{ matrix.pg_version <= 10 && 'off' || matrix.pg_version == 15 && 'master' || format('REL_{0}_STABLE', matrix.pg_version) }}
 
     steps:
       - uses: actions/checkout@v2
