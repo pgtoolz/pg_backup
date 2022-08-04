@@ -918,7 +918,7 @@ restore_chain(pgBackup *dest_backup, parray *parent_chain,
 				join_path_components(fullpath, pgdata_path, file->rel_path);
 
 				if (fio_remove(FIO_DB_HOST, fullpath, false) == 0)
-					elog(VERBOSE, "Deleted file \"%s\"", fullpath);
+					elog(LOG, "Deleted file \"%s\"", fullpath);
 				else
 					elog(ERROR, "Cannot delete redundant file \"%s\": %s", fullpath, strerror(errno));
 
