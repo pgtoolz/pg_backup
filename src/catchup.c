@@ -936,7 +936,7 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 				join_path_components(fullpath, dest_pgdata, file->rel_path);
 
 				if (dry_run || fio_remove(FIO_LOCAL_HOST, fullpath, false) == 0)
-					elog(VERBOSE, "Deleted file \"%s\"", fullpath);
+					elog(LOG, "Deleted file \"%s\"", fullpath);
 				else
 					elog(ERROR, "Cannot delete redundant file in destination \"%s\": %s", fullpath, strerror(errno));
 
