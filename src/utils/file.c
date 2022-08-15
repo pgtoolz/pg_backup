@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <signal.h>
 
 #include "pg_probackup.h"
 
