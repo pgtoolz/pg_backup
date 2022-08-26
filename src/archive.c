@@ -11,7 +11,7 @@
 #include <unistd.h>
 #include "pg_probackup.h"
 #include "utils/thread.h"
-#include "instr_time.h"
+#include "portability/instr_time.h"
 
 static int push_file_internal_uncompressed(const char *wal_file_name, const char *pg_xlog_dir,
 								  const char *archive_dir, bool overwrite, bool no_sync,
