@@ -333,9 +333,6 @@ class RestoreTest(ProbackupTest, unittest.TestCase):
             base_dir=os.path.join(self.module_name, self.fname, 'node'),
             initdb_params=['--data-checksums'])
 
-        if self.get_version(node) < self.version_to_num('10.0'):
-            return
-
         backup_dir = os.path.join(self.tmp_path, self.module_name, self.fname, 'backup')
         self.init_pb(backup_dir)
         self.add_instance(backup_dir, 'node', node)
@@ -398,9 +395,6 @@ class RestoreTest(ProbackupTest, unittest.TestCase):
         node = self.make_simple_node(
             base_dir=os.path.join(self.module_name, self.fname, 'node'),
             initdb_params=['--data-checksums'])
-
-        if self.get_version(node) < self.version_to_num('10.0'):
-            return
 
         backup_dir = os.path.join(self.tmp_path, self.module_name, self.fname, 'backup')
         self.init_pb(backup_dir)
@@ -2032,10 +2026,7 @@ class RestoreTest(ProbackupTest, unittest.TestCase):
         with node.connect("postgres") as con:
             con.execute("INSERT INTO tbl0005 VALUES (1)")
             con.commit()
-            if self.get_version(node) > self.version_to_num('10.0'):
-                res = con.execute("SELECT pg_current_wal_lsn()")
-            else:
-                res = con.execute("SELECT pg_current_xlog_location()")
+            res = con.execute("SELECT pg_current_wal_lsn()")
 
             con.commit()
             con.execute("INSERT INTO tbl0005 VALUES (2)")
@@ -2126,33 +2117,32 @@ class RestoreTest(ProbackupTest, unittest.TestCase):
         node.slow_start()
 
         # Restore with recovery target lsn
-        if self.get_version(node) >= 100000:
 
-            node.cleanup()
-            self.restore_node(
-                backup_dir, 'node', node,
-                options=[
-                    '--recovery-target-lsn={0}'.format(target_lsn),
-                    "--recovery-target-action=promote",
-                    '--recovery-target-timeline=1',
-                    ])
+        node.cleanup()
+        self.restore_node(
+            backup_dir, 'node', node,
+            options=[
+                '--recovery-target-lsn={0}'.format(target_lsn),
+                "--recovery-target-action=promote",
+                '--recovery-target-timeline=1',
+                ])
 
-            with open(recovery_conf, 'r') as f:
-                recovery_conf_content = f.read()
+        with open(recovery_conf, 'r') as f:
+            recovery_conf_content = f.read()
 
-            self.assertIn(
-                "recovery_target_lsn = '{0}'".format(target_lsn),
-                recovery_conf_content)
+        self.assertIn(
+            "recovery_target_lsn = '{0}'".format(target_lsn),
+            recovery_conf_content)
 
-            self.assertIn(
-                "recovery_target_action = 'promote'",
-                recovery_conf_content)
+        self.assertIn(
+            "recovery_target_action = 'promote'",
+            recovery_conf_content)
 
-            self.assertIn(
-                "recovery_target_timeline = '1'",
-                recovery_conf_content)
+        self.assertIn(
+            "recovery_target_timeline = '1'",
+            recovery_conf_content)
 
-            node.slow_start()
+        node.slow_start()
 
     # @unittest.skip("skip")
     def test_smart_restore(self):
@@ -3048,118 +3038,7 @@ class RestoreTest(ProbackupTest, unittest.TestCase):
             "postgres",
             "CREATE DATABASE backupdb")
 
-        # PG 9.5
-        if self.get_version(node) < 90600:
-            node.safe_psql(
-                'backupdb',
-                "REVOKE ALL ON DATABASE backupdb from PUBLIC; "
-                "REVOKE ALL ON SCHEMA public from PUBLIC; "
-                "REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC; "
-                "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC; "
-                "REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC; "
-                "REVOKE ALL ON SCHEMA pg_catalog from PUBLIC; "
-                "REVOKE ALL ON ALL TABLES IN SCHEMA pg_catalog FROM PUBLIC; "
-                "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA pg_catalog FROM PUBLIC; "
-                "REVOKE ALL ON ALL SEQUENCES IN SCHEMA pg_catalog FROM PUBLIC; "
-                "REVOKE ALL ON SCHEMA information_schema from PUBLIC; "
-                "REVOKE ALL ON ALL TABLES IN SCHEMA information_schema FROM PUBLIC; "
-                "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA information_schema FROM PUBLIC; "
-                "REVOKE ALL ON ALL SEQUENCES IN SCHEMA information_schema FROM PUBLIC; "
-                "CREATE ROLE backup WITH LOGIN REPLICATION; "
-                "GRANT CONNECT ON DATABASE backupdb to backup; "
-                "GRANT USAGE ON SCHEMA pg_catalog TO backup; "
-                "GRANT SELECT ON TABLE pg_catalog.pg_proc TO backup; "
-                "GRANT SELECT ON TABLE pg_catalog.pg_extension TO backup; "
-                "GRANT SELECT ON TABLE pg_catalog.pg_database TO backup; " # for partial restore, checkdb and ptrack
-                "GRANT EXECUTE ON FUNCTION pg_catalog.oideq(oid, oid) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.nameeq(name, name) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.textout(text) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.timestamptz(timestamp with time zone, integer) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.current_setting(text) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.set_config(text, text, boolean) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_is_in_recovery() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_start_backup(text, boolean) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_stop_backup() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.txid_current_snapshot() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.txid_snapshot_xmax(txid_snapshot) TO backup;")
-        # PG 9.6
-        elif self.get_version(node) > 90600 and self.get_version(node) < 100000:
-            node.safe_psql(
-                'backupdb',
-                "REVOKE ALL ON DATABASE backupdb from PUBLIC; "
-                "REVOKE ALL ON SCHEMA public from PUBLIC; "
-                "REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC; "
-                "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC; "
-                "REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC; "
-                "REVOKE ALL ON SCHEMA pg_catalog from PUBLIC; "
-                "REVOKE ALL ON ALL TABLES IN SCHEMA pg_catalog FROM PUBLIC; "
-                "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA pg_catalog FROM PUBLIC; "
-                "REVOKE ALL ON ALL SEQUENCES IN SCHEMA pg_catalog FROM PUBLIC; "
-                "REVOKE ALL ON SCHEMA information_schema from PUBLIC; "
-                "REVOKE ALL ON ALL TABLES IN SCHEMA information_schema FROM PUBLIC; "
-                "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA information_schema FROM PUBLIC; "
-                "REVOKE ALL ON ALL SEQUENCES IN SCHEMA information_schema FROM PUBLIC; "
-                "CREATE ROLE backup WITH LOGIN REPLICATION; "
-                "GRANT CONNECT ON DATABASE backupdb to backup; "
-                "GRANT USAGE ON SCHEMA pg_catalog TO backup; "
-                "GRANT SELECT ON TABLE pg_catalog.pg_proc TO backup; "
-                "GRANT SELECT ON TABLE pg_catalog.pg_extension TO backup; "
-                "GRANT SELECT ON TABLE pg_catalog.pg_database TO backup; " # for partial restore, checkdb and ptrack
-                "GRANT EXECUTE ON FUNCTION pg_catalog.oideq(oid, oid) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.nameeq(name, name) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.textout(text) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.timestamptz(timestamp with time zone, integer) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.current_setting(text) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.set_config(text, text, boolean) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_is_in_recovery() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_control_system() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_start_backup(text, boolean, boolean) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_stop_backup(boolean) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_create_restore_point(text) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_switch_xlog() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_last_xlog_replay_location() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.txid_current_snapshot() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.txid_snapshot_xmax(txid_snapshot) TO backup;"
-            )
-        # >= 10 && < 15
-        elif self.get_version(node) >= 100000 and self.get_version(node) < 150000:
-            node.safe_psql(
-                'backupdb',
-                "REVOKE ALL ON DATABASE backupdb from PUBLIC; "
-                "REVOKE ALL ON SCHEMA public from PUBLIC; "
-                "REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC; "
-                "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC; "
-                "REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC; "
-                "REVOKE ALL ON SCHEMA pg_catalog from PUBLIC; "
-                "REVOKE ALL ON ALL TABLES IN SCHEMA pg_catalog FROM PUBLIC; "
-                "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA pg_catalog FROM PUBLIC; "
-                "REVOKE ALL ON ALL SEQUENCES IN SCHEMA pg_catalog FROM PUBLIC; "
-                "REVOKE ALL ON SCHEMA information_schema from PUBLIC; "
-                "REVOKE ALL ON ALL TABLES IN SCHEMA information_schema FROM PUBLIC; "
-                "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA information_schema FROM PUBLIC; "
-                "REVOKE ALL ON ALL SEQUENCES IN SCHEMA information_schema FROM PUBLIC; "
-                "CREATE ROLE backup WITH LOGIN REPLICATION; "
-                "GRANT CONNECT ON DATABASE backupdb to backup; "
-                "GRANT USAGE ON SCHEMA pg_catalog TO backup; "
-                "GRANT SELECT ON TABLE pg_catalog.pg_proc TO backup; "
-                "GRANT SELECT ON TABLE pg_catalog.pg_extension TO backup; "
-                "GRANT SELECT ON TABLE pg_catalog.pg_database TO backup; " # for partial restore, checkdb and ptrack
-                "GRANT EXECUTE ON FUNCTION pg_catalog.oideq(oid, oid) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.nameeq(name, name) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.current_setting(text) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.set_config(text, text, boolean) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_is_in_recovery() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_control_system() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_start_backup(text, boolean, boolean) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_stop_backup(boolean, boolean) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_create_restore_point(text) TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_switch_wal() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_last_wal_replay_lsn() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.txid_current_snapshot() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.txid_snapshot_xmax(txid_snapshot) TO backup;"
-            )
-        # >= 15
-        else:
+        if self.get_version(node) >= 150000:
             node.safe_psql(
                 'backupdb',
                 "REVOKE ALL ON DATABASE backupdb from PUBLIC; "
@@ -3189,6 +3068,43 @@ class RestoreTest(ProbackupTest, unittest.TestCase):
                 "GRANT EXECUTE ON FUNCTION pg_catalog.pg_control_system() TO backup; "
                 "GRANT EXECUTE ON FUNCTION pg_catalog.pg_backup_start(text, boolean) TO backup; "
                 "GRANT EXECUTE ON FUNCTION pg_catalog.pg_backup_stop(boolean) TO backup; "
+                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_create_restore_point(text) TO backup; "
+                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_switch_wal() TO backup; "
+                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_last_wal_replay_lsn() TO backup; "
+                "GRANT EXECUTE ON FUNCTION pg_catalog.txid_current_snapshot() TO backup; "
+                "GRANT EXECUTE ON FUNCTION pg_catalog.txid_snapshot_xmax(txid_snapshot) TO backup;"
+            )
+        # < 15
+        else:
+            node.safe_psql(
+                'backupdb',
+                "REVOKE ALL ON DATABASE backupdb from PUBLIC; "
+                "REVOKE ALL ON SCHEMA public from PUBLIC; "
+                "REVOKE ALL ON ALL TABLES IN SCHEMA public FROM PUBLIC; "
+                "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC; "
+                "REVOKE ALL ON ALL SEQUENCES IN SCHEMA public FROM PUBLIC; "
+                "REVOKE ALL ON SCHEMA pg_catalog from PUBLIC; "
+                "REVOKE ALL ON ALL TABLES IN SCHEMA pg_catalog FROM PUBLIC; "
+                "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA pg_catalog FROM PUBLIC; "
+                "REVOKE ALL ON ALL SEQUENCES IN SCHEMA pg_catalog FROM PUBLIC; "
+                "REVOKE ALL ON SCHEMA information_schema from PUBLIC; "
+                "REVOKE ALL ON ALL TABLES IN SCHEMA information_schema FROM PUBLIC; "
+                "REVOKE ALL ON ALL FUNCTIONS IN SCHEMA information_schema FROM PUBLIC; "
+                "REVOKE ALL ON ALL SEQUENCES IN SCHEMA information_schema FROM PUBLIC; "
+                "CREATE ROLE backup WITH LOGIN REPLICATION; "
+                "GRANT CONNECT ON DATABASE backupdb to backup; "
+                "GRANT USAGE ON SCHEMA pg_catalog TO backup; "
+                "GRANT SELECT ON TABLE pg_catalog.pg_proc TO backup; "
+                "GRANT SELECT ON TABLE pg_catalog.pg_extension TO backup; "
+                "GRANT SELECT ON TABLE pg_catalog.pg_database TO backup; " # for partial restore, checkdb and ptrack
+                "GRANT EXECUTE ON FUNCTION pg_catalog.oideq(oid, oid) TO backup; "
+                "GRANT EXECUTE ON FUNCTION pg_catalog.nameeq(name, name) TO backup; "
+                "GRANT EXECUTE ON FUNCTION pg_catalog.current_setting(text) TO backup; "
+                "GRANT EXECUTE ON FUNCTION pg_catalog.set_config(text, text, boolean) TO backup; "
+                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_is_in_recovery() TO backup; "
+                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_control_system() TO backup; "
+                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_start_backup(text, boolean, boolean) TO backup; "
+                "GRANT EXECUTE ON FUNCTION pg_catalog.pg_stop_backup(boolean, boolean) TO backup; "
                 "GRANT EXECUTE ON FUNCTION pg_catalog.pg_create_restore_point(text) TO backup; "
                 "GRANT EXECUTE ON FUNCTION pg_catalog.pg_switch_wal() TO backup; "
                 "GRANT EXECUTE ON FUNCTION pg_catalog.pg_last_wal_replay_lsn() TO backup; "

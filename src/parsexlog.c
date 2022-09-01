@@ -32,11 +32,8 @@
 #if PG_VERSION_NUM >= 150000
 #define PG_RMGR(symname,name,redo,desc,identify,startup,cleanup,mask,decode) \
   name,
-#elif PG_VERSION_NUM >= 100000
-#define PG_RMGR(symname,name,redo,desc,identify,startup,cleanup,mask) \
-  name,
 #else
-#define PG_RMGR(symname,name,redo,desc,identify,startup,cleanup) \
+#define PG_RMGR(symname,name,redo,desc,identify,startup,cleanup,mask) \
   name,
 #endif
 

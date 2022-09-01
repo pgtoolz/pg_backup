@@ -30,9 +30,6 @@ parray *backup_files_list = NULL;
 /* We need critical section for datapagemap_add() in case of using threads */
 static pthread_mutex_t backup_pagemap_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// TODO: move to PGnodeInfo
-bool exclusive_backup = false;
-
 /* Is pg_start_backup() was executed */
 bool backup_in_progress = false;
 
@@ -78,7 +75,7 @@ backup_stopbackup_callback(bool fatal, void *userdata)
 	{
 		elog(WARNING, "backup in progress, stop backup");
 		/* don't care about stop_lsn in case of error */
-		pg_stop_backup_send(st->conn, st->server_version, current.from_replica, exclusive_backup, NULL);
+		pg_stop_backup_send(st->conn, st->server_version, current.from_replica, NULL);
 	}
 }
 
@@ -131,12 +128,7 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 	pg_start_backup(label, smooth_checkpoint, &current, nodeInfo, backup_conn);
 
 	/* Obtain current timeline */
-#if PG_VERSION_NUM >= 90600
 	current.tli = get_current_timeline(backup_conn);
-#else
-	/* PG-9.5 */
-	current.tli = get_current_timeline_from_control(FIO_DB_HOST, instance_config.pgdata, false);
-#endif
 
 	/*
 	 * In incremental backup mode ensure that already-validated
@@ -497,10 +489,10 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 	/* Notify end of backup */
 	pg_stop_backup(instanceState, &current, backup_conn, nodeInfo);
 
-	/* In case of backup from replica >= 9.6 we must fix minRecPoint,
+	/* In case of backup from replica we must fix minRecPoint,
 	 * First we must find pg_control in backup_files_list.
 	 */
-	if (current.from_replica && !exclusive_backup)
+	if (current.from_replica)
 	{
 		pgFile	   *pg_control = NULL;
 
@@ -836,11 +828,6 @@ do_backup(InstanceState *instanceState, pgSetBackupParams *set_backup_params,
 		}
 	}
 
-	if (current.from_replica && exclusive_backup)
-		/* Check master connection options */
-		if (instance_config.master_conn_opt.pghost == NULL)
-			elog(ERROR, "Options for connection to master must be provided to perform backup from replica");
-
 	/* add note to backup if requested */
 	if (set_backup_params && set_backup_params->note)
 		add_note(&current, set_backup_params->note);
@@ -921,22 +908,12 @@ check_server_version(PGconn *conn, PGNodeInfo *nodeInfo)
 		elog(ERROR, "Unknown server version %d", nodeInfo->server_version);
 
 	if (nodeInfo->server_version < 100000)
-		sprintf(nodeInfo->server_version_str, "%d.%d",
-				nodeInfo->server_version / 10000,
-				(nodeInfo->server_version / 100) % 100);
-	else
-		sprintf(nodeInfo->server_version_str, "%d",
-				nodeInfo->server_version / 10000);
-
-	if (nodeInfo->server_version < 90500)
 		elog(ERROR,
 			 "server version is %s, must be %s or higher",
-			 nodeInfo->server_version_str, "9.5");
+			 nodeInfo->server_version_str, "10");
 
-	if (current.from_replica && nodeInfo->server_version < 90600)
-		elog(ERROR,
-			 "server version is %s, must be %s or higher for backup from replica",
-			 nodeInfo->server_version_str, "9.6");
+	sprintf(nodeInfo->server_version_str, "%d",
+			nodeInfo->server_version / 10000);
 
 	if (nodeInfo->pgpro_support)
 		res = pgut_execute(conn, "SELECT pg_catalog.pgpro_edition()", 0, NULL);
@@ -988,9 +965,6 @@ check_server_version(PGconn *conn, PGNodeInfo *nodeInfo)
 
 	if (res)
 		PQclear(res);
-
-	/* Do exclusive backup only for PostgreSQL 9.5 */
-	exclusive_backup = nodeInfo->server_version < 90600;
 }
 
 /*
@@ -1102,21 +1076,16 @@ pg_start_backup(const char *label, bool smooth, pgBackup *backup,
 	PQclear(res);
 
 	if ((!backup->stream || backup->backup_mode == BACKUP_MODE_DIFF_PAGE) &&
-		!backup->from_replica &&
-		!(nodeInfo->server_version < 90600 &&
-		  !nodeInfo->is_superuser))
+		!backup->from_replica)
 		/*
 		 * Switch to a new WAL segment. It is necessary to get archived WAL
 		 * segment, which includes start LSN of current backup.
-		 * Don`t do this for replica backups and for PG 9.5 if pguser is not superuser
-		 * (because in 9.5 only superuser can switch WAL)
 		 */
 		pg_switch_wal(conn);
 }
 
 /*
  * Switch to a new WAL segment. It should be called only for master.
- * For PG 9.5 it should be called only if pguser is superuser.
  */
 void
 pg_switch_wal(PGconn *conn)
@@ -1125,11 +1094,7 @@ pg_switch_wal(PGconn *conn)
 
 	pg_silent_client_messages(conn);
 
-#if PG_VERSION_NUM >= 100000
 	res = pgut_execute(conn, "SELECT pg_catalog.pg_switch_wal()", 0, NULL);
-#else
-	res = pgut_execute(conn, "SELECT pg_catalog.pg_switch_xlog()", 0, NULL);
-#endif
 
 	PQclear(res);
 }
@@ -1619,20 +1584,9 @@ pg_create_restore_point(PGconn *conn, time_t backup_start_time)
 }
 
 void
-pg_stop_backup_send(PGconn *conn, int server_version, bool is_started_on_replica, bool is_exclusive, char **query_text)
+pg_stop_backup_send(PGconn *conn, int server_version, bool is_started_on_replica, char **query_text)
 {
 	static const char
-		stop_exlusive_backup_query[] =
-			/*
-			 * Stop the non-exclusive backup. Besides stop_lsn it returns from
-			 * pg_stop_backup(false) copy of the backup label and tablespace map
-			 * so they can be written to disk by the caller.
-			 * TODO, question: add NULLs as backup_label and tablespace_map?
-			 */
-			"SELECT"
-			" pg_catalog.txid_snapshot_xmax(pg_catalog.txid_current_snapshot()),"
-			" current_timestamp(0)::timestamptz,"
-			" pg_catalog.pg_stop_backup() as lsn",
 		stop_backup_on_master_query[] =
 			"SELECT"
 			" pg_catalog.txid_snapshot_xmax(pg_catalog.txid_current_snapshot()),"
@@ -1640,25 +1594,17 @@ pg_stop_backup_send(PGconn *conn, int server_version, bool is_started_on_replica
 			" lsn,"
 			" labelfile,"
 			" spcmapfile"
-			" FROM pg_catalog.pg_stop_backup(false, false)",
-		stop_backup_on_master_before10_query[] =
-			"SELECT"
-			" pg_catalog.txid_snapshot_xmax(pg_catalog.txid_current_snapshot()),"
-			" current_timestamp(0)::timestamptz,"
-			" lsn,"
-			" labelfile,"
-			" spcmapfile"
-			" FROM pg_catalog.pg_stop_backup(false)",
-		stop_backup_on_master_after15_query[] =
-			"SELECT"
-			" pg_catalog.txid_snapshot_xmax(pg_catalog.txid_current_snapshot()),"
-			" current_timestamp(0)::timestamptz,"
-			" lsn,"
-			" labelfile,"
-			" spcmapfile"
 			" FROM pg_catalog.pg_backup_stop(false)",
+		stop_backup_on_master_before15_query[] =
+			"SELECT"
+			" pg_catalog.txid_snapshot_xmax(pg_catalog.txid_current_snapshot()),"
+			" current_timestamp(0)::timestamptz,"
+			" lsn,"
+			" labelfile,"
+			" spcmapfile"
+			" FROM pg_catalog.pg_stop_backup(false, false)",
 		/*
-		 * In case of backup from replica >= 9.6 we do not trust minRecPoint
+		 * In case of backup from replica we do not trust minRecPoint
 		 * and stop_backup LSN, so we use latest replayed LSN as STOP LSN.
 		 */
 		stop_backup_on_replica_query[] =
@@ -1668,42 +1614,26 @@ pg_stop_backup_send(PGconn *conn, int server_version, bool is_started_on_replica
 			" pg_catalog.pg_last_wal_replay_lsn(),"
 			" labelfile,"
 			" spcmapfile"
-			" FROM pg_catalog.pg_stop_backup(false, false)",
-		stop_backup_on_replica_before10_query[] =
-			"SELECT"
-			" pg_catalog.txid_snapshot_xmax(pg_catalog.txid_current_snapshot()),"
-			" current_timestamp(0)::timestamptz,"
-			" pg_catalog.pg_last_xlog_replay_location(),"
-			" labelfile,"
-			" spcmapfile"
-			" FROM pg_catalog.pg_stop_backup(false)",
-		stop_backup_on_replica_after15_query[] =
+			" FROM pg_catalog.pg_backup_stop(false)",
+		stop_backup_on_replica_before15_query[] =
 			"SELECT"
 			" pg_catalog.txid_snapshot_xmax(pg_catalog.txid_current_snapshot()),"
 			" current_timestamp(0)::timestamptz,"
 			" pg_catalog.pg_last_wal_replay_lsn(),"
 			" labelfile,"
 			" spcmapfile"
-			" FROM pg_catalog.pg_backup_stop(false)";
+			" FROM pg_catalog.pg_stop_backup(false, false)";
 
 	const char * const stop_backup_query =
-		is_exclusive ?
-			stop_exlusive_backup_query :
-			server_version >= 150000 ?
-				(is_started_on_replica ?
-					stop_backup_on_replica_after15_query :
-					stop_backup_on_master_after15_query
-				) :
-				(server_version >= 100000 ?
-					(is_started_on_replica ?
-						stop_backup_on_replica_query :
-						stop_backup_on_master_query
-					) :
-					(is_started_on_replica ?
-						stop_backup_on_replica_before10_query :
-						stop_backup_on_master_before10_query
-					)
-				);
+		server_version >= 150000 ?
+			(is_started_on_replica ?
+				stop_backup_on_replica_query :
+				stop_backup_on_master_query
+			) :
+			(is_started_on_replica ?
+				stop_backup_on_replica_before15_query :
+				stop_backup_on_master_before15_query
+			);
 	bool		sent = false;
 
 	/* Make proper timestamp format for parse_time(recovery_time) */
@@ -1740,7 +1670,7 @@ pg_stop_backup_send(PGconn *conn, int server_version, bool is_started_on_replica
  */
 void
 pg_stop_backup_consume(PGconn *conn, int server_version,
-		bool is_exclusive, uint32 timeout, const char *query_text,
+		uint32 timeout, const char *query_text,
 		PGStopBackupResult *result)
 {
 	PGresult	*query_result;
@@ -1854,28 +1784,18 @@ pg_stop_backup_consume(PGconn *conn, int server_version,
 	/* get backup_label_content */
 	result->backup_label_content = NULL;
 	// if (!PQgetisnull(query_result, 0, backup_label_colno))
-	if (!is_exclusive)
-	{
-		result->backup_label_content_len = PQgetlength(query_result, 0, backup_label_colno);
-		if (result->backup_label_content_len > 0)
-			result->backup_label_content = pgut_strndup(PQgetvalue(query_result, 0, backup_label_colno),
-								result->backup_label_content_len);
-	} else {
-		result->backup_label_content_len = 0;
-	}
+	result->backup_label_content_len = PQgetlength(query_result, 0, backup_label_colno);
+	if (result->backup_label_content_len > 0)
+		result->backup_label_content = pgut_strndup(PQgetvalue(query_result, 0, backup_label_colno),
+							result->backup_label_content_len);
 
 	/* get tablespace_map_content */
 	result->tablespace_map_content = NULL;
 	// if (!PQgetisnull(query_result, 0, tablespace_map_colno))
-	if (!is_exclusive)
-	{
-		result->tablespace_map_content_len = PQgetlength(query_result, 0, tablespace_map_colno);
-		if (result->tablespace_map_content_len > 0)
-			result->tablespace_map_content = pgut_strndup(PQgetvalue(query_result, 0, tablespace_map_colno),
-								result->tablespace_map_content_len);
-	} else {
-		result->tablespace_map_content_len = 0;
-	}
+	result->tablespace_map_content_len = PQgetlength(query_result, 0, tablespace_map_colno);
+	if (result->tablespace_map_content_len > 0)
+		result->tablespace_map_content = pgut_strndup(PQgetvalue(query_result, 0, tablespace_map_colno),
+							result->tablespace_map_content_len);
 }
 
 /*
@@ -1943,21 +1863,18 @@ pg_stop_backup(InstanceState *instanceState, pgBackup *backup, PGconn *pg_startb
 
 	/* Create restore point
 	 * Only if backup is from master.
-	 * For PG 9.5 create restore point only if pguser is superuser.
 	 */
-	if (!backup->from_replica &&
-		!(nodeInfo->server_version < 90600 &&
-		  !nodeInfo->is_superuser)) //TODO: check correctness
+	if (!backup->from_replica)
 		pg_create_restore_point(pg_startbackup_conn, backup->start_time);
 
 	/* Execute pg_stop_backup using PostgreSQL connection */
-	pg_stop_backup_send(pg_startbackup_conn, nodeInfo->server_version, backup->from_replica, exclusive_backup, &query_text);
+	pg_stop_backup_send(pg_startbackup_conn, nodeInfo->server_version, backup->from_replica, &query_text);
 
 	/*
 	 * Wait for the result of pg_stop_backup(), but no longer than
 	 * archive_timeout seconds
 	 */
-	pg_stop_backup_consume(pg_startbackup_conn, nodeInfo->server_version, exclusive_backup, timeout, query_text, &stop_backup_result);
+	pg_stop_backup_consume(pg_startbackup_conn, nodeInfo->server_version, timeout, query_text, &stop_backup_result);
 
 	if (backup->stream)
 	{
@@ -1970,28 +1887,25 @@ pg_stop_backup(InstanceState *instanceState, pgBackup *backup, PGconn *pg_startb
 	wait_wal_and_calculate_stop_lsn(xlog_path, stop_backup_result.lsn, backup);
 
 	/* Write backup_label and tablespace_map */
-	if (!exclusive_backup)
+	Assert(stop_backup_result.backup_label_content != NULL);
+
+	/* Write backup_label */
+	pg_stop_backup_write_file_helper(backup->database_dir, PG_BACKUP_LABEL_FILE, "backup label",
+		stop_backup_result.backup_label_content, stop_backup_result.backup_label_content_len,
+		backup_files_list);
+	free(stop_backup_result.backup_label_content);
+	stop_backup_result.backup_label_content = NULL;
+	stop_backup_result.backup_label_content_len = 0;
+
+	/* Write tablespace_map */
+	if (stop_backup_result.tablespace_map_content != NULL)
 	{
-		Assert(stop_backup_result.backup_label_content != NULL);
-
-		/* Write backup_label */
-		pg_stop_backup_write_file_helper(backup->database_dir, PG_BACKUP_LABEL_FILE, "backup label",
-			stop_backup_result.backup_label_content, stop_backup_result.backup_label_content_len,
+		pg_stop_backup_write_file_helper(backup->database_dir, PG_TABLESPACE_MAP_FILE, "tablespace map",
+			stop_backup_result.tablespace_map_content, stop_backup_result.tablespace_map_content_len,
 			backup_files_list);
-		free(stop_backup_result.backup_label_content);
-		stop_backup_result.backup_label_content = NULL;
-		stop_backup_result.backup_label_content_len = 0;
-
-		/* Write tablespace_map */
-		if (stop_backup_result.tablespace_map_content != NULL)
-		{
-			pg_stop_backup_write_file_helper(backup->database_dir, PG_TABLESPACE_MAP_FILE, "tablespace map",
-				stop_backup_result.tablespace_map_content, stop_backup_result.tablespace_map_content_len,
-				backup_files_list);
-			free(stop_backup_result.tablespace_map_content);
-			stop_backup_result.tablespace_map_content = NULL;
-			stop_backup_result.tablespace_map_content_len = 0;
-		}
+		free(stop_backup_result.tablespace_map_content);
+		stop_backup_result.tablespace_map_content = NULL;
+		stop_backup_result.tablespace_map_content_len = 0;
 	}
 
 	if (backup->stream)
