@@ -1399,10 +1399,6 @@ class IncrRestoreTest(ProbackupTest, unittest.TestCase):
             set_replication=True,
             initdb_params=['--data-checksums'])
 
-        if self.get_version(master) < self.version_to_num('9.6.0'):
-            self.skipTest(
-                'Skipped because backup from replica is not supported in PG 9.5')
-
         self.init_pb(backup_dir)
         self.add_instance(backup_dir, 'node', master)
         self.set_archiving(backup_dir, 'node', master, replica=True)
@@ -1466,10 +1462,6 @@ class IncrRestoreTest(ProbackupTest, unittest.TestCase):
             base_dir=os.path.join(self.module_name, self.fname, 'master'),
             set_replication=True,
             initdb_params=['--data-checksums'])
-
-        if self.get_version(master) < self.version_to_num('9.6.0'):
-            self.skipTest(
-                'Skipped because backup from replica is not supported in PG 9.5')
 
         self.init_pb(backup_dir)
         self.add_instance(backup_dir, 'node', master)

@@ -126,10 +126,6 @@ class BugTest(ProbackupTest, unittest.TestCase):
             recovery_config, "recovery_target_action = 'pause'")
         replica.slow_start(replica=True)
 
-        current_xlog_lsn_query = 'SELECT pg_last_wal_replay_lsn() INTO current_xlog_lsn'
-        if self.get_version(node) < 100000:
-            current_xlog_lsn_query = 'SELECT min_recovery_end_location INTO current_xlog_lsn FROM pg_control_recovery()'
-
         script = f'''
 DO
 $$
@@ -139,7 +135,7 @@ DECLARE
     pages_from_future RECORD;
     found_corruption  bool := false;
 BEGIN
-    {current_xlog_lsn_query};
+    SELECT pg_last_wal_replay_lsn() INTO current_xlog_lsn;
     RAISE NOTICE 'CURRENT LSN: %', current_xlog_lsn;
     FOR roid IN select oid from pg_class class where relkind IN ('r', 'i', 't', 'm') and relpersistence = 'p' LOOP
         FOR pages_from_future IN
@@ -156,7 +152,7 @@ BEGIN
     END IF;
 END;
 $$ LANGUAGE plpgsql;
-'''.format(current_xlog_lsn_query=current_xlog_lsn_query)
+'''
 
         # Find blocks from future
         replica.safe_psql(
