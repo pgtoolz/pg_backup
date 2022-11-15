@@ -1500,7 +1500,7 @@ class CompatibilityTest(ProbackupTest, unittest.TestCase):
             self.compare_pgdata(pgdata, pgdata_restored)
 
         # Clean after yourself
-        self.del_test_dir(module_name, fname)
+        self.del_test_dir(self.module_name, self.fname)
 
     # @unittest.skip("skip")
     def test_compatibility_master_options(self):
@@ -1513,8 +1513,8 @@ class CompatibilityTest(ProbackupTest, unittest.TestCase):
             'You need pg_probackup old_binary =< 2.6.0 for this test')
 
         fname = self.id().split('.')[3]
-        node = self.make_simple_node(base_dir=os.path.join(module_name, fname, 'node'))
-        backup_dir = os.path.join(self.tmp_path, module_name, fname, 'backup')
+        node = self.make_simple_node(base_dir=os.path.join(self.module_name, fname, 'node'))
+        backup_dir = os.path.join(self.tmp_path, self.module_name, fname, 'backup')
 
         self.init_pb(backup_dir, old_binary=True)
         self.add_instance(backup_dir, 'node', node, old_binary=True)
@@ -1547,5 +1547,5 @@ class CompatibilityTest(ProbackupTest, unittest.TestCase):
             'Obsolete options found in new config')
 
         # Clean after yourself
-        self.del_test_dir(module_name, fname)
+        self.del_test_dir(self.module_name, fname)
 
