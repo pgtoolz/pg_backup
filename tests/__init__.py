@@ -31,8 +31,9 @@ def load_tests(loader, tests, pattern):
     suite.addTests(loader.loadTestsFromModule(archive_test))
     suite.addTests(loader.loadTestsFromModule(backup_test))
     suite.addTests(loader.loadTestsFromModule(catchup_test))
-    if 'PGPROBACKUPBIN_OLD' in os.environ and os.environ['PGPROBACKUPBIN_OLD']:
-        suite.addTests(loader.loadTestsFromModule(compatibility_test))
+#    at this point there is nothing to be compatible with
+#    if 'PGPROBACKUPBIN_OLD' in os.environ and os.environ['PGPROBACKUPBIN_OLD']:
+#        suite.addTests(loader.loadTestsFromModule(compatibility_test))
     suite.addTests(loader.loadTestsFromModule(checkdb_test))
     suite.addTests(loader.loadTestsFromModule(config_test))
     suite.addTests(loader.loadTestsFromModule(cfs_backup_test))
