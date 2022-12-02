@@ -1940,7 +1940,8 @@ class PtrackTest(ProbackupTest, unittest.TestCase):
 
         # CREATE TABLE
         node.pgbench_init(scale=100, options=['--tablespace=somedata'])
-        result = node.table_checksum("pgbench_accounts")
+        result = node.table_checksum("pgbench_accounts", "aid",
+                                     dbname="postgres")
         # FULL BACKUP
         self.backup_node(backup_dir, 'node', node, options=['--stream'])
 
@@ -1977,7 +1978,8 @@ class PtrackTest(ProbackupTest, unittest.TestCase):
 
         # GET LOGICAL CONTENT FROM NODE
         # it`s stupid, because hint`s are ignored by ptrack
-        result = node.table_checksum("pgbench_accounts")
+        result = node.table_checksum("pgbench_accounts", "aid",
+                                     dbname="postgres")
         # FIRTS PTRACK BACKUP
         self.backup_node(
             backup_dir, 'node', node, backup_type='ptrack', options=['--stream'])
@@ -2010,7 +2012,8 @@ class PtrackTest(ProbackupTest, unittest.TestCase):
             restored_node, {'port': restored_node.port})
         restored_node.slow_start()
 
-        result_new = restored_node.table_checksum("pgbench_accounts")
+        result_new = restored_node.table_checksum("pgbench_accounts", "aid",
+                                                  dbname="postgres")
 
         # COMPARE RESTORED FILES
         self.assertEqual(result, result_new, 'data is lost')
