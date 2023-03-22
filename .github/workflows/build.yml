@@ -7,11 +7,11 @@ jobs:
     runs-on: ubuntu-18.04
     steps:
 
-    - name: Checkout repo
+    - name: Checkout
       uses: actions/checkout@v2
 
     - name: Setup
       run: ls -la && sudo PG_TAG=REL_10_20 PG_VERSION=10 .github/scripts/setup.sh
 
-    - name: Run tests
+    - name: Test
       run: sudo PG_VERSION=10 .github/scripts/regression.sh

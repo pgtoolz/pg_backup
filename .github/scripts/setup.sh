@@ -19,7 +19,9 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -q -y curl ca-certificates gnupg lsb-release build-essential gcc make zlib1g-dev
+apt-get install -q -y curl ca-certificates gnupg lsb-release build-essential gcc make zlib1g-dev python3 python3-pip
+
+pip3 install testgres
 
 # Clone Postgres
 echo "############### Getting Postgres sources:"
