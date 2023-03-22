@@ -11,7 +11,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Setup
-      run: sudo PG_TAG=REL_10_20 PG_VERSION=10 .github/scripts/setup.sh
+      run: ls -la && sudo PG_TAG=REL_10_20 PG_VERSION=10 .github/scripts/setup.sh
 
     - name: Run tests
       run: sudo PG_VERSION=10 .github/scripts/regression.sh
