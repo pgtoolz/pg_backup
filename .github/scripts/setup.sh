@@ -17,12 +17,14 @@ export PG_BIN_DIR=${PWD}/pg/${PG_VERSION}
 #fi
 
 # sanitize environment
-sudo apt-get purge -y $(dpkg -l | awk '{print$2}' | grep postgres) libpq5 libpq-dev
-
 export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update
+sudo apt-get purge -y $(dpkg -l | awk '{print$2}' | grep postgres) libpq5 libpq-dev
+
+# install deps
 #apt-get install -q -y curl ca-certificates gnupg lsb-release build-essential gcc make zlib1g-dev python3 python3-pip python3-setuptools
 sudo apt-get install -q -y gnupg lsb-release build-essential gcc make zlib1g-dev python3 python3-pip python3-setuptools
+sudo pip3 install testgres
 
 # Clone Postgres
 echo "############### Getting Postgres sources:"
@@ -65,8 +67,6 @@ if [ ! -d "contrib/amcheck" ]; then
     make -C contrib/amcheck install
 fi
 
-sudo pip3 install testgres
-
 # Build and install pg_probackup (using PG_CPPFLAGS and SHLIB_LINK for gcov)
 echo "############### Compiling and installing pg_probackup:"
 export PG_SRC=$PWD
@@ -75,4 +75,3 @@ cd ..
 # make USE_PGXS=1 PG_CPPFLAGS="-coverage" SHLIB_LINK="-coverage" top_srcdir=$CUSTOM_PG_SRC install
 make USE_PGXS=1 top_srcdir=$PG_SRC
 #make USE_PGXS=1 top_srcdir=$PG_SRC install
-ls -la
