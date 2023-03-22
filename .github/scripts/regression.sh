@@ -23,4 +23,5 @@ echo "############### Testing:"
 #echo PG_PROBACKUP_PTRACK=${PG_PROBACKUP_PTRACK}
 
 export PG_PROBACKUP_TEST_BASIC=ON
-python3 -m unittest -v tests
+chown -R postgres ./
+su --preserve-environment postgres -c 'python3 -m unittest -v tests'

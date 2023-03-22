@@ -19,9 +19,8 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
-apt-get install -q -y curl ca-certificates gnupg lsb-release build-essential gcc make zlib1g-dev python3 python3-pip python3-setuptools
-
-pip3 install testgres
+#apt-get install -q -y curl ca-certificates gnupg lsb-release build-essential gcc make zlib1g-dev python3 python3-pip python3-setuptools
+apt-get install -q -y gnupg lsb-release build-essential gcc make zlib1g-dev python3 python3-pip python3-setuptools
 
 # Clone Postgres
 echo "############### Getting Postgres sources:"
@@ -65,3 +64,5 @@ if [ ! -d "contrib/amcheck" ]; then
 fi
 
 pip3 install testgres
+
+useradd postgres
