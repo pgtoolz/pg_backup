@@ -16,11 +16,9 @@ fi
 #fi
 
 # sanitize environment
-for i in $(dpkg -l | awk '{print$2}' | grep postgres)
-    do apt-get purge -y $i
-done
+apt-get purge -y $(dpkg -l | awk '{print$2}' | grep postgres)
 
-exit 1
+exit 5
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
