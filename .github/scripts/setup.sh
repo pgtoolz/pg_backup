@@ -15,6 +15,11 @@ fi
 #	PTRACK_PATCH_PG_BRANCH=OFF
 #fi
 
+echo $PGHOME
+echo $PG_VERSION
+echo $PG_TAG
+exit 5
+
 # sanitize environment
 apt-get purge -y $(dpkg -l | awk '{print$2}' | grep postgres) libpq5 libpq-dev
 
@@ -73,3 +78,4 @@ export PATH=$PGHOME/bin:$PATH
 # make USE_PGXS=1 PG_CPPFLAGS="-coverage" SHLIB_LINK="-coverage" top_srcdir=$CUSTOM_PG_SRC install
 make USE_PGXS=1 top_srcdir=$PG_SRC
 #make USE_PGXS=1 top_srcdir=$PG_SRC install
+ls -la

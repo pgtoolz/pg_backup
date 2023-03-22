@@ -1,19 +1,21 @@
 name: regression
 on: [push]
 
-jobs:
+env:
+  PGHOME: /pg
 
+jobs:
   pg-10:
     runs-on: ubuntu-18.04
     env:
-      PGHOME: /pg
+      PG_TAG: REL_10_20
+      PG_VERSION: 10
     steps:
-
     - name: Checkout
       uses: actions/checkout@v2
 
     - name: Setup
-      run: sudo PG_TAG=REL_10_20 PG_VERSION=10 .github/scripts/setup.sh
+      run: sudo .github/scripts/setup.sh
 
     - name: Test
       run: sudo .github/scripts/regression.sh
