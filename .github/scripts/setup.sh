@@ -18,8 +18,6 @@ fi
 # sanitize environment
 apt-get purge -y $(dpkg -l | awk '{print$2}' | grep postgres)
 
-exit 5
-
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 #apt-get install -q -y curl ca-certificates gnupg lsb-release build-essential gcc make zlib1g-dev python3 python3-pip python3-setuptools
