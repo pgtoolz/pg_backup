@@ -14,4 +14,4 @@ echo "############### Testing:"
 export PG_BIN_DIR=${PWD}/pg/${PG_VERSION}
 export PG_CONFIG=${PG_BIN_DIR}/bin/pg_config
 export PG_PROBACKUP_TEST_BASIC=ON
-python3 -m unittest -v tests'
+python3 -m unittest -v tests
