@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 set -xe
 
-export PGHOME=/pg
-
 if [ -z ${PG_VERSION+x} ]; then
 	echo PG_VERSION is not set!
 	exit 1
@@ -65,4 +63,8 @@ fi
 
 pip3 install testgres
 
-#useradd postgres
+# Build and install pg_probackup (using PG_CPPFLAGS and SHLIB_LINK for gcov)
+echo "############### Compiling and installing pg_probackup:"
+export PG_SRC=$PWD/postgres
+# make USE_PGXS=1 PG_CPPFLAGS="-coverage" SHLIB_LINK="-coverage" top_srcdir=$CUSTOM_PG_SRC install
+make USE_PGXS=1 top_srcdir=$PG_SRC install

@@ -5,13 +5,15 @@ jobs:
 
   pg-10:
     runs-on: ubuntu-18.04
+    env:
+      PGHOME: /pg
     steps:
 
     - name: Checkout
       uses: actions/checkout@v2
 
     - name: Setup
-      run: ls -la && sudo PG_TAG=REL_10_20 PG_VERSION=10 .github/scripts/setup.sh
+      run: sudo PG_TAG=REL_10_20 PG_VERSION=10 .github/scripts/setup.sh
 
     - name: Test
-      run: sudo PG_VERSION=10 .github/scripts/regression.sh
+      run: sudo .github/scripts/regression.sh
