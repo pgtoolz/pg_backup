@@ -19,7 +19,7 @@ fi
 
 export DEBIAN_FRONTEND=noninteractive
 apt update
-apt install -y curl ca-certificates gnupg lsb-release build-essential
+apt install -y curl ca-certificates gnupg lsb-release build-essential gcc make
 
 # Clone Postgres
 echo "############### Getting Postgres sources:"
