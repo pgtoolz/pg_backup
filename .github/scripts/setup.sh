@@ -30,9 +30,9 @@ git clone https://github.com/postgres/postgres.git -b $PG_TAG --depth=1
 #    export PG_PROBACKUP_PTRACK=OFF
 #fi
 
-## Compile and install Postgres
-#echo "############### Compiling Postgres:"
-#cd postgres # Go to postgres dir
+# Compile and install Postgres
+echo "############### Compiling Postgres:"
+cd postgres # Go to postgres dir
 #if [ "$PG_PROBACKUP_PTRACK" = "ON" ]; then
 #    git apply -3 contrib/ptrack/patches/${PTRACK_PATCH_PG_BRANCH}-ptrack-core.diff
 #fi
