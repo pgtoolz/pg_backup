@@ -41,7 +41,7 @@ cd postgres # Go to postgres dir
 #fi
 CFLAGS="-Og" ./configure --prefix=$PGHOME \
     --enable-debug --enable-cassert --enable-depend \
-    --enable-tap-tests --without-readline
+    --without-readline
 make -s -j$(nproc) install
 make -s -j$(nproc) -C contrib/ install
 
