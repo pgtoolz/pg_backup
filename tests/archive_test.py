@@ -308,9 +308,9 @@ class ArchiveTest(ProbackupTest, unittest.TestCase):
             "postgres",
             "SELECT pid "
             "FROM pg_stat_activity "
-            "WHERE application_name = 'pg_probackup'").decode('utf-8').rstrip()
+            "WHERE application_name = 'pg_backup'").decode('utf-8').rstrip()
 
-        os.environ["PGAPPNAME"] = "pg_probackup"
+        os.environ["PGAPPNAME"] = "pg_backup"
 
         postgres_gdb = self.gdb_attach(pid)
         if self.get_version(node) < 150000:
@@ -394,7 +394,7 @@ class ArchiveTest(ProbackupTest, unittest.TestCase):
             log_content)
 
         self.assertIn(
-            'pg_probackup archive-push WAL file',
+            'pg_backup archive-push WAL file',
             log_content)
 
         self.assertIn(
@@ -402,7 +402,7 @@ class ArchiveTest(ProbackupTest, unittest.TestCase):
             log_content)
 
         self.assertNotIn(
-            'pg_probackup archive-push completed successfully', log_content)
+            'pg_backup archive-push completed successfully', log_content)
 
         if self.get_version(node) < 100000:
             wal_src = os.path.join(
@@ -425,7 +425,7 @@ class ArchiveTest(ProbackupTest, unittest.TestCase):
             log_content = f.read()
 
         self.assertIn(
-            'pg_probackup archive-push completed successfully',
+            'pg_backup archive-push completed successfully',
             log_content)
 
         # btw check that console coloring codes are not slipped into log file
@@ -479,7 +479,7 @@ class ArchiveTest(ProbackupTest, unittest.TestCase):
         self.assertIn(
             'DETAIL:  The failed archive command was:', log_content)
         self.assertIn(
-            'pg_probackup archive-push WAL file', log_content)
+            'pg_backup archive-push WAL file', log_content)
         self.assertNotIn(
             'WAL file already exists in archive with '
             'different checksum, overwriting', log_content)
@@ -488,7 +488,7 @@ class ArchiveTest(ProbackupTest, unittest.TestCase):
             'different checksum', log_content)
 
         self.assertNotIn(
-            'pg_probackup archive-push completed successfully', log_content)
+            'pg_backup archive-push completed successfully', log_content)
 
         self.set_archiving(backup_dir, 'node', node, overwrite=True)
         node.reload()
@@ -498,7 +498,7 @@ class ArchiveTest(ProbackupTest, unittest.TestCase):
         with open(log_file, 'r') as f:
             log_content = f.read()
             self.assertTrue(
-                'pg_probackup archive-push completed successfully' in log_content,
+                'pg_backup archive-push completed successfully' in log_content,
                 'Expecting messages about successfull execution archive_command')
 
         self.assertIn(
@@ -2239,17 +2239,17 @@ class ArchiveTest(ProbackupTest, unittest.TestCase):
         # check that requesting of non-existing segment do not
         # throwns aways prefetch
         self.assertIn(
-            'pg_probackup archive-get failed to '
+            'pg_backup archive-get failed to '
             'deliver WAL file: 000000030000000000000006',
             postgres_log_content)
 
         self.assertIn(
-            'pg_probackup archive-get failed to '
+            'pg_backup archive-get failed to '
             'deliver WAL file: 000000020000000000000006',
             postgres_log_content)
 
         self.assertIn(
-            'pg_probackup archive-get used prefetched '
+            'pg_backup archive-get used prefetched '
             'WAL segment 000000010000000000000006, prefetch state: 5/10',
             postgres_log_content)
 
@@ -2315,7 +2315,7 @@ class ArchiveTest(ProbackupTest, unittest.TestCase):
             postgres_log_content = f.read()
 
         self.assertIn(
-            'pg_probackup archive-get completed successfully, fetched: 10/10',
+            'pg_backup archive-get completed successfully, fetched: 10/10',
             postgres_log_content)
         self.assertIn('used prefetched WAL segment', postgres_log_content)
         self.assertIn('prefetch state: 9/10', postgres_log_content)
@@ -2377,7 +2377,7 @@ class ArchiveTest(ProbackupTest, unittest.TestCase):
             postgres_log_content = f.read()
 
         self.assertIn(
-            'pg_probackup archive-get completed successfully, fetched: 10/10',
+            'pg_backup archive-get completed successfully, fetched: 10/10',
             postgres_log_content)
         self.assertIn('used prefetched WAL segment', postgres_log_content)
         self.assertIn('prefetch state: 9/10', postgres_log_content)

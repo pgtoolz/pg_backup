@@ -299,8 +299,8 @@ static char* extract_pg_edition_str()
 #define COMPATIBILITY_LINE_SEPARATOR "\n"
 
 /*
- * Compose compatibility string to be sent by pg_probackup agent
- * through ssh and to be verified by pg_probackup peer.
+ * Compose compatibility string to be sent by pg_backup agent
+ * through ssh and to be verified by pg_backup peer.
  * Compatibility string contains postgres essential vars as strings
  * in format "var_name" + COMPATIBILITY_VAL_SEPARATOR + "var_value" + COMPATIBILITY_LINE_SEPARATOR
  */
@@ -355,8 +355,8 @@ void check_remote_agent_compatibility(int agent_version, char *compatibility_str
 				agent_version % 100);
 
 		elog(ERROR, "Remote agent protocol version %s does not match local program protocol version %s, "
-					"consider to upgrade pg_probackup binary",
-			agent_version_str, AGENT_PROTOCOL_VERSION_STR);
+					"consider to upgrade %s binary",
+			agent_version_str, AGENT_PROTOCOL_VERSION_STR, PROGRAM_NAME);
 	}
 
 	/* checking compatibility params */

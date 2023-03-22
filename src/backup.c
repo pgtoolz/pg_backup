@@ -24,8 +24,6 @@
 #include "utils/thread.h"
 #include "utils/file.h"
 
-//const char *progname = "pg_probackup";
-
 /* list of files contained in backup */
 parray *backup_files_list = NULL;
 
@@ -126,8 +124,8 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 
 	/* notify start of backup to PostgreSQL server */
 	time2iso(label, lengthof(label), current.start_time, false);
-	strncat(label, " with pg_probackup", lengthof(label) -
-			strlen(" with pg_probackup"));
+	strncat(label, " with pg_backup", lengthof(label) -
+			strlen(" with pg_backup"));
 
 	/* Call pg_start_backup function in PostgreSQL connect */
 	pg_start_backup(label, smooth_checkpoint, &current, nodeInfo, backup_conn);
@@ -187,10 +185,11 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 	if (prev_backup)
 	{
 		if (parse_program_version(prev_backup->program_version) > parse_program_version(PROGRAM_VERSION))
-			elog(ERROR, "pg_probackup binary version is %s, but backup %s version is %s. "
-						"pg_probackup do not guarantee to be forward compatible. "
-						"Please upgrade pg_probackup binary.",
-						PROGRAM_VERSION, backup_id_of(prev_backup), prev_backup->program_version);
+			elog(ERROR, "%s binary version is %s, but backup %s version is %s. "
+						"%s do not guarantee to be forward compatible. "
+						"Please upgrade %s binary.",
+						PROGRAM_NAME, PROGRAM_VERSION, backup_id_of(prev_backup),
+						prev_backup->program_version, PROGRAM_NAME, PROGRAM_NAME);
 
 		elog(INFO, "Parent backup: %s", backup_id_of(prev_backup));
 
@@ -314,7 +313,7 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 
 	if (parray_num(backup_files_list) < 100)
 		elog(ERROR, "PGDATA is almost empty. Either it was concurrently deleted or "
-			"pg_probackup do not possess sufficient permissions to list PGDATA content");
+			"%s do not possess sufficient permissions to list PGDATA content", PROGRAM_NAME);
 
 	current.pgdata_bytes += calculate_datasize_of_filelist(backup_files_list);
 	pretty_size(current.pgdata_bytes, pretty_bytes, lengthof(pretty_bytes));
@@ -677,12 +676,12 @@ pgdata_basic_setup(ConnectionOptions conn_opt, PGNodeInfo *nodeInfo)
 					"Data block corruption will be detected");
 	else
 		elog(WARNING, "This PostgreSQL instance was initialized without data block checksums. "
-						"pg_probackup have no way to detect data block corruption without them. "
-						"Reinitialize PGDATA with option '--data-checksums'.");
+						"%s have no way to detect data block corruption without them. "
+						"Reinitialize PGDATA with option '--data-checksums'.", PROGRAM_NAME);
 
 	if (nodeInfo->is_superuser)
 		elog(WARNING, "Current PostgreSQL role is superuser. "
-						"It is not recommended to run pg_probackup under superuser.");
+						"It is not recommended to run %s under superuser.", PROGRAM_NAME);
 
 	strlcpy(current.server_version, nodeInfo->server_version_str,
 			sizeof(current.server_version));
@@ -691,7 +690,7 @@ pgdata_basic_setup(ConnectionOptions conn_opt, PGNodeInfo *nodeInfo)
 }
 
 /*
- * Entry point of pg_probackup BACKUP subcommand.
+ * Entry point of pg_backup BACKUP subcommand.
  *
  * if start_time == INVALID_BACKUP_ID then we can generate backup_id
  */
@@ -777,9 +776,9 @@ do_backup(InstanceState *instanceState, pgSetBackupParams *set_backup_params,
 	current.compress_alg = instance_config.compress_alg;
 	current.compress_level = instance_config.compress_level;
 
-	elog(INFO, "Backup start, pg_probackup version: %s, instance: %s, backup ID: %s, backup mode: %s, "
+	elog(INFO, "Backup start, %s version: %s, instance: %s, backup ID: %s, backup mode: %s, "
 			"wal mode: %s, remote: %s, compress-algorithm: %s, compress-level: %i",
-			PROGRAM_VERSION, instanceState->instance_name, backup_id_of(&current), pgBackupGetBackupMode(&current, false),
+			PROGRAM_NAME, PROGRAM_VERSION, instanceState->instance_name, backup_id_of(&current), pgBackupGetBackupMode(&current, false),
 			current.stream ? "STREAM" : "ARCHIVE", IsSshProtocol()  ? "true" : "false",
 			deparse_compress_alg(current.compress_alg), current.compress_level);
 
@@ -1433,9 +1432,9 @@ wait_wal_lsn(const char *wal_segment_dir, XLogRecPtr target_lsn, bool is_start_l
 		}
 
 		if (!current.stream && is_start_lsn && try_count == 30)
-			elog(WARNING, "By default pg_probackup assume WAL delivery method to be ARCHIVE. "
+			elog(WARNING, "By default %s assume WAL delivery method to be ARCHIVE. "
 				 "If continuous archiving is not set up, use '--stream' option to make autonomous backup. "
-				 "Otherwise check that continuous archiving works correctly.");
+				 "Otherwise check that continuous archiving works correctly.", PROGRAM_NAME);
 
 		if (timeout > 0 && try_count > timeout)
 		{
@@ -1609,7 +1608,7 @@ pg_create_restore_point(PGconn *conn, time_t backup_start_time)
 	const char	*params[1];
 	char		name[1024];
 
-	snprintf(name, lengthof(name), "pg_probackup, backup_id %s",
+	snprintf(name, lengthof(name), "pg_backup, backup_id %s",
 				base36enc(backup_start_time));
 	params[0] = name;
 

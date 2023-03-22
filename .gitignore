@@ -1,5 +1,6 @@
 # Object files
 *.o
+*.bc
 
 # Libraries
 *.lib
@@ -19,7 +20,7 @@
 .deps
 
 # Binaries
-/pg_probackup
+/pg_backup
 
 # Generated translated file
 /po/ru.mo

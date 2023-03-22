@@ -168,4 +168,4 @@ $$ LANGUAGE plpgsql;
 
         # do basebackup
 
-        # do pg_probackup, expect error
+        # do pg_backup, expect error

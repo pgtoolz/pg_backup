@@ -1911,7 +1911,7 @@ class ValidateTest(ProbackupTest, unittest.TestCase):
                 'Expecting error messages about failed archive_command'
             )
             self.assertFalse(
-                'pg_probackup archive-push completed successfully' in log_content)
+                'pg_backup archive-push completed successfully' in log_content)
 
     # @unittest.skip("skip")
     def test_validate_corrupted_full(self):
@@ -3814,7 +3814,7 @@ class ValidateTest(ProbackupTest, unittest.TestCase):
             self.assertEqual(
                 1, 0,
                 "Expecting Error because validation is forbidden if server version of backup "
-                "is different from the server version of pg_probackup.\n Output: {0} \n CMD: {1}".format(
+                "is different from the server version of pg_backup.\n Output: {0} \n CMD: {1}".format(
                     repr(self.output), self.cmd))
         except ProbackupException as e:
             self.assertIn(
