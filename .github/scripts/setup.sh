@@ -16,8 +16,8 @@ fi
 #fi
 
 # sanitize environment
-apt-get purge -y $(dpkg -l | awk '{print$2}' | grep postgres)
-which pg_config
+apt-get purge -y $(dpkg -l | awk '{print$2}' | grep postgres) libpq5 libpq-dev
+which /usr/bin/pg_config
 exit 5
 
 export DEBIAN_FRONTEND=noninteractive
