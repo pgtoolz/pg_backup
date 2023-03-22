@@ -1,12 +1,11 @@
 #!/usr/bin/env bash
 set -xe
 
-whoami
-
 if [ -z ${PG_VERSION+x} ]; then
 	echo PG_VERSION is not set!
 	exit 1
 fi
+export PG_BIN_DIR=${PWD}/pg/${PG_VERSION}
 
 #if [ -z ${PG_BRANCH+x} ]; then
 #	echo PG_BRANCH is not set!
@@ -16,8 +15,6 @@ fi
 #if [ -z ${PTRACK_PATCH_PG_BRANCH+x} ]; then
 #	PTRACK_PATCH_PG_BRANCH=OFF
 #fi
-
-mkdir $PGHOME && sudo chown $(whoami) $PGHOME
 
 # sanitize environment
 sudo apt-get purge -y $(dpkg -l | awk '{print$2}' | grep postgres) libpq5 libpq-dev
@@ -45,16 +42,16 @@ cd postgres # Go to postgres dir
 #if [ "$PG_PROBACKUP_PTRACK" = "ON" ]; then
 #    git apply -3 contrib/ptrack/patches/${PTRACK_PATCH_PG_BRANCH}-ptrack-core.diff
 #fi
-CFLAGS="-Og" ./configure --prefix=$PGHOME \
+CFLAGS="-Og" ./configure --prefix=$PG_BIN_DIR \
     --enable-debug --enable-cassert --enable-depend \
     --without-readline
 make -s -j$(nproc) install
 make -s -j$(nproc) -C contrib/ install
 
 # Override default Postgres instance
-#export PATH=$PGHOME/bin:$PATH
-export LD_LIBRARY_PATH=$PGHOME/lib
-export PG_CONFIG=$PGHOME/bin/pg_config
+#export PATH=$PG_BIN_DIR/bin:$PATH
+export LD_LIBRARY_PATH=$PG_BIN_DIR/lib
+export PG_CONFIG=$PG_BIN_DIR/bin/pg_config
 
 #if [ "$PG_PROBACKUP_PTRACK" = "ON" ]; then
 #    echo "############### Compiling Ptrack:"
@@ -73,7 +70,7 @@ sudo pip3 install testgres
 # Build and install pg_probackup (using PG_CPPFLAGS and SHLIB_LINK for gcov)
 echo "############### Compiling and installing pg_probackup:"
 export PG_SRC=$PWD
-export PATH=$PGHOME/bin:$PATH
+export PATH=$PG_BIN_DIR/bin:$PATH
 # make USE_PGXS=1 PG_CPPFLAGS="-coverage" SHLIB_LINK="-coverage" top_srcdir=$CUSTOM_PG_SRC install
 make USE_PGXS=1 top_srcdir=$PG_SRC
 #make USE_PGXS=1 top_srcdir=$PG_SRC install

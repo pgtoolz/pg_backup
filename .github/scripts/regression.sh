@@ -11,6 +11,7 @@ echo "############### Testing:"
 #echo PGPROBACKUP_GDB=${PGPROBACKUP_GDB}
 #echo PG_PROBACKUP_PTRACK=${PG_PROBACKUP_PTRACK}
 
-export PG_CONFIG=$PGHOME/bin/pg_config
+export PG_BIN_DIR=${PWD}/pg/${PG_VERSION}
+export PG_CONFIG=${PG_BIN_DIR}/bin/pg_config
 export PG_PROBACKUP_TEST_BASIC=ON
 python3 -m unittest -v tests'

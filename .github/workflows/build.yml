@@ -1,9 +1,6 @@
 name: regression
 on: [push]
 
-env:
-    PGHOME: /pg
-
 jobs:
   pg-10:
     runs-on: ubuntu-18.04
