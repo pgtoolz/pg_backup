@@ -22,7 +22,7 @@ As compared to other backup solutions, `pg_backup` offers the following benefits
 * Archive catalog: getting the list of all WAL timelines and the corresponding meta information in plain text or JSON formats
 * Partial Restore: restore only the specified databases or exclude the specified databases from restore.
 
-To manage backup data, `pg_backup` creates a backup catalog. This directory stores all backup files with additional meta information, as well as WAL archives required for [point-in-time recovery](https://postgrespro.com/docs/postgresql/current/continuous-archiving.html). You can store backups for different instances in separate subdirectories of a single backup catalog.
+To manage backup data, `pg_backup` creates a backup catalog. This directory stores all backup files with additional meta information, as well as WAL archives required for [point-in-time recovery](https://www.postgresql.org/docs/current/continuous-archiving.html). You can store backups for different instances in separate subdirectories of a single backup catalog.
 
 Using `pg_backup`, you can take full or incremental backups:
 * `Full` backups contain all the data files required to restore the database cluster from scratch.
@@ -79,7 +79,7 @@ make USE_PGXS=1 PG_CONFIG=<path_to_pg_config> top_srcdir=<path_to_PostgreSQL_sou
 The alternative way, without using the PGXS infrastructure, is to place `pg_backup` source directory into `contrib` directory and build it there. Example:
 
 ```shell
-cd <path_to_PostgreSQL_source_tree> && git clone https://github.com/postgrespro/pg_backup contrib/pg_backup && cd contrib/pg_backup && make
+cd <path_to_PostgreSQL_source_tree> && git clone https://github.com/pgtoolz/pg_backup contrib/pg_backup && cd contrib/pg_backup && make
 ```
 
 ## License
@@ -96,7 +96,7 @@ pgtoolz team
 
 ## Credits
 
-`pg_backup` utility is based on `pg_arman`, that was originally written by NTT and then developed and maintained by Michael Paquier.
+`pg_backup` utility is a fork of `pg_probackup`, which in turn is based on `pg_arman`, originally written by NTT and then developed and maintained by Michael Paquier.
 
 
 ### Localization files (*.po)
@@ -110,4 +110,4 @@ Description of how to add new translation languages.
 6. Adding to nls.mk in folder pg_backup required language in AVAIL_LANGUAGES.
 
 For more information, follow the link below:
-https://postgrespro.ru/docs/postgresql/12/nls-translator
+https://www.postgresql.org/docs/current/nls-translator.html
