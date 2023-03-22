@@ -2449,7 +2449,7 @@ write_page_headers(BackupPageHeader2 *headers, pgFile *file, HeaderMap *hdr_map,
 						read_len, ZLIB_COMPRESS, 1, &errormsg);
 
 	/* writing to header map must be serialized */
-	pthread_lock(&(hdr_map->mutex)); /* what if we crash while trying to obtain mutex? */
+	pthread_mutex_lock(&(hdr_map->mutex)); /* what if we crash while trying to obtain mutex? */
 
 	if (!hdr_map->fp)
 	{

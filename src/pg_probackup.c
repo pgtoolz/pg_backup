@@ -301,7 +301,7 @@ main(int argc, char *argv[])
 
 	PROGRAM_NAME_FULL = argv[0];
 
-	/* Check terminal presense and initialize ANSI escape codes for Windows */
+	/* Check terminal presense */
 	init_console();
 
 	/* Initialize current backup */
@@ -344,14 +344,6 @@ main(int argc, char *argv[])
 		backup_subcmd = parse_subcmd(argv[1]);
 		switch(backup_subcmd)
 		{
-			case SSH_CMD:
-#ifdef WIN32
-				launch_ssh(argv);
-				break;
-#else
-				elog(ERROR, "\"ssh\" command implemented only for Windows");
-				break;
-#endif
 			case AGENT_CMD:
 				/* 'No forward compatibility' sanity:
 				 *   /old/binary  -> ssh execute -> /newer/binary agent version_num
@@ -380,6 +372,10 @@ main(int argc, char *argv[])
 			case VERSION_CMD:
 				help_print_version();
 				exit(0);
+			case SSH_CMD:
+				/* pg_probackup legacy (windows support) */
+				elog(ERROR, "Unsupported \"ssh\" pg_backup command");
+				break;
 			case NO_CMD:
 				elog(ERROR, "Unknown subcommand \"%s\"", argv[1]);
 			default:
@@ -1053,10 +1049,10 @@ main(int argc, char *argv[])
 			do_checkdb(need_amcheck,
 					   instance_config.conn_opt, instance_config.pgdata);
 			break;
+		case SSH_CMD:
 		case NO_CMD:
 			/* Should not happen */
 			elog(ERROR, "Unknown subcommand");
-		case SSH_CMD:
 		case AGENT_CMD:
 			/* Может перейти на использование какого-нибудь do_agent() для однобразия? */
 		case HELP_CMD:
