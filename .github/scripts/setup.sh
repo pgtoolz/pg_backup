@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -xe
 
+whoami
+
 if [ -z ${PG_VERSION+x} ]; then
 	echo PG_VERSION is not set!
 	exit 1
