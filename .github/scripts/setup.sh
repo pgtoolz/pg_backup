@@ -45,9 +45,9 @@ make -s -j$(nproc) install
 make -s -j$(nproc) -C contrib/ install
 
 # Override default Postgres instance
-export PATH=$PGHOME/bin:$PATH
+#export PATH=$PGHOME/bin:$PATH
 export LD_LIBRARY_PATH=$PGHOME/lib
-export PG_CONFIG=$(which pg_config)
+export PG_CONFIG=$PGHOME/bin/pg_config
 
 #if [ "$PG_PROBACKUP_PTRACK" = "ON" ]; then
 #    echo "############### Compiling Ptrack:"
@@ -63,8 +63,9 @@ fi
 
 pip3 install testgres
 
+echo "HELLO"
 pwd
-ls -la
+ls -la ./
 
 # Build and install pg_probackup (using PG_CPPFLAGS and SHLIB_LINK for gcov)
 echo "############### Compiling and installing pg_probackup:"
