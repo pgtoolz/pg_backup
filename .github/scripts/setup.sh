@@ -17,18 +17,15 @@ fi
 #	PTRACK_PATCH_PG_BRANCH=OFF
 #fi
 
-echo $PGHOME
-echo $PG_VERSION
-echo $PG_TAG
-exit 5
+mkdir $PGHOME && sudo chown $(whoami) $PGHOME
 
 # sanitize environment
-apt-get purge -y $(dpkg -l | awk '{print$2}' | grep postgres) libpq5 libpq-dev
+sudo apt-get purge -y $(dpkg -l | awk '{print$2}' | grep postgres) libpq5 libpq-dev
 
 export DEBIAN_FRONTEND=noninteractive
-apt-get update
+sudo apt-get update
 #apt-get install -q -y curl ca-certificates gnupg lsb-release build-essential gcc make zlib1g-dev python3 python3-pip python3-setuptools
-apt-get install -q -y gnupg lsb-release build-essential gcc make zlib1g-dev python3 python3-pip python3-setuptools
+sudo apt-get install -q -y gnupg lsb-release build-essential gcc make zlib1g-dev python3 python3-pip python3-setuptools
 
 # Clone Postgres
 echo "############### Getting Postgres sources:"
@@ -71,7 +68,7 @@ if [ ! -d "contrib/amcheck" ]; then
     make -C contrib/amcheck install
 fi
 
-pip3 install testgres
+sudo pip3 install testgres
 
 # Build and install pg_probackup (using PG_CPPFLAGS and SHLIB_LINK for gcov)
 echo "############### Compiling and installing pg_probackup:"
