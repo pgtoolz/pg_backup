@@ -71,4 +71,5 @@ echo "############### Compiling and installing pg_probackup:"
 export PG_SRC=$PWD
 export PATH=$PGHOME/bin:$PATH
 # make USE_PGXS=1 PG_CPPFLAGS="-coverage" SHLIB_LINK="-coverage" top_srcdir=$CUSTOM_PG_SRC install
-make USE_PGXS=1 top_srcdir=$PG_SRC install
+make USE_PGXS=1 top_srcdir=$PG_SRC
+#make USE_PGXS=1 top_srcdir=$PG_SRC install
