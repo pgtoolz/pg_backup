@@ -15,7 +15,10 @@ fi
 #	PTRACK_PATCH_PG_BRANCH=OFF
 #fi
 
-dpkg -l | grep postgres
+# sanitize environment
+for i in $(dpkg -l | awk '{print$2}' | grep postgres)
+    do apt-get purge -y $i
+done
 
 exit 1
 
