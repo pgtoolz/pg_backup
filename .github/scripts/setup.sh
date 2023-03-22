@@ -21,6 +21,8 @@ export DEBIAN_FRONTEND=noninteractive
 apt update
 apt install -y curl ca-certificates gnupg lsb-release build-essential gcc make
 
+gcc --help
+
 # Clone Postgres
 echo "############### Getting Postgres sources:"
 git clone https://github.com/postgres/postgres.git -b $PG_TAG --depth=1
@@ -39,8 +41,7 @@ cd postgres # Go to postgres dir
 #if [ "$PG_PROBACKUP_PTRACK" = "ON" ]; then
 #    git apply -3 contrib/ptrack/patches/${PTRACK_PATCH_PG_BRANCH}-ptrack-core.diff
 #fi
-CC='ccache gcc' CFLAGS="-Og" ./configure --prefix=$PGHOME \
-    --cache-file=~/.ccache/configure-cache \
+CFLAGS="-Og" ./configure --prefix=$PGHOME \
     --enable-debug --enable-cassert --enable-depend \
     --enable-tap-tests --enable-nls
 make -s -j$(nproc) install
