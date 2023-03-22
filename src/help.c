@@ -79,7 +79,7 @@ help_command(ProbackupSubcmd const subcmd)
 }
 
 void
-help_pg_probackup(void)
+help_pg_backup(void)
 {
 	printf(_("\n%s - utility to manage backup/recovery of PostgreSQL database.\n"), PROGRAM_NAME);
 
@@ -281,7 +281,7 @@ help_pg_probackup(void)
 static void
 help_nocmd(void)
 {
-	printf(_("\nUnknown command. Try pg_probackup help\n\n"));
+	printf(_("\nUnknown command. Try %s help\n\n"), PROGRAM_NAME);
 }
 
 static void
@@ -423,7 +423,7 @@ help_backup(void)
 	printf(_("                                   available options: 'ssh', 'none' (default: ssh)\n"));
 	printf(_("      --remote-host=destination    remote host address or hostname\n"));
 	printf(_("      --remote-port=port           remote host port (default: 22)\n"));
-	printf(_("      --remote-path=path           path to directory with pg_probackup binary on remote host\n"));
+	printf(_("      --remote-path=path           path to directory with %s binary on remote host\n"), PROGRAM_NAME);
 	printf(_("                                   (default: current binary path)\n"));
 	printf(_("      --remote-user=username       user name for ssh connection (default: current user)\n"));
 	printf(_("      --ssh-options=ssh_options    additional ssh options (default: none)\n"));
@@ -556,7 +556,7 @@ help_restore(void)
 	printf(_("                                   available options: 'ssh', 'none' (default: ssh)\n"));
 	printf(_("      --remote-host=destination    remote host address or hostname\n"));
 	printf(_("      --remote-port=port           remote host port (default: 22)\n"));
-	printf(_("      --remote-path=path           path to directory with pg_probackup binary on remote host\n"));
+	printf(_("      --remote-path=path           path to directory with %s binary on remote host\n"), PROGRAM_NAME);
 	printf(_("                                   (default: current binary path)\n"));
 	printf(_("      --remote-user=username       user name for ssh connection (default: current user)\n"));
 	printf(_("      --ssh-options=ssh_options    additional ssh options (default: none)\n"));
@@ -921,7 +921,7 @@ help_set_config(void)
 	printf(_("                                   available options: 'ssh', 'none' (default: ssh)\n"));
 	printf(_("      --remote-host=destination    remote host address or hostname\n"));
 	printf(_("      --remote-port=port           remote host port (default: 22)\n"));
-	printf(_("      --remote-path=path           path to directory with pg_probackup binary on remote host\n"));
+	printf(_("      --remote-path=path           path to directory with %s binary on remote host\n"), PROGRAM_NAME);
 	printf(_("                                   (default: current binary path)\n"));
 	printf(_("      --remote-user=username       user name for ssh connection (default: current user)\n"));
 	printf(_("      --ssh-options=ssh_options    additional ssh options (default: none)\n"));
@@ -973,7 +973,7 @@ help_add_instance(void)
 	printf(_("                                   available options: 'ssh', 'none' (default: ssh)\n"));
 	printf(_("      --remote-host=destination    remote host address or hostname\n"));
 	printf(_("      --remote-port=port           remote host port (default: 22)\n"));
-	printf(_("      --remote-path=path           path to directory with pg_probackup binary on remote host\n"));
+	printf(_("      --remote-path=path           path to directory with %s binary on remote host\n"), PROGRAM_NAME);
 	printf(_("                                   (default: current binary path)\n"));
 	printf(_("      --remote-user=username       user name for ssh connection (default: current user)\n"));
 	printf(_("      --ssh-options=ssh_options    additional ssh options (default: none)\n"));
@@ -1030,7 +1030,7 @@ help_archive_push(void)
 	printf(_("                                   available options: 'ssh', 'none' (default: ssh)\n"));
 	printf(_("      --remote-host=hostname       remote host address or hostname\n"));
 	printf(_("      --remote-port=port           remote host port (default: 22)\n"));
-	printf(_("      --remote-path=path           path to directory with pg_probackup binary on remote host\n"));
+	printf(_("      --remote-path=path           path to directory with %s binary on remote host\n"), PROGRAM_NAME);
 	printf(_("                                   (default: current binary path)\n"));
 	printf(_("      --remote-user=username       user name for ssh connection (default: current user)\n"));
 	printf(_("      --ssh-options=ssh_options    additional ssh options (default: none)\n"));
@@ -1065,7 +1065,7 @@ help_archive_get(void)
 	printf(_("                                   available options: 'ssh', 'none' (default: ssh)\n"));
 	printf(_("      --remote-host=hostname       remote host address or hostname\n"));
 	printf(_("      --remote-port=port           remote host port (default: 22)\n"));
-	printf(_("      --remote-path=path           path to directory with pg_probackup binary on remote host\n"));
+	printf(_("      --remote-path=path           path to directory with %s binary on remote host\n"), PROGRAM_NAME);
 	printf(_("                                   (default: current binary path)\n"));
 	printf(_("      --remote-user=username       user name for ssh connection (default: current user)\n"));
 	printf(_("      --ssh-options=ssh_options    additional ssh options (default: none)\n"));
@@ -1131,7 +1131,7 @@ help_catchup(void)
 	printf(_("                                   available options: 'ssh', 'none' (default: ssh)\n"));
 	printf(_("      --remote-host=hostname       remote host address or hostname\n"));
 	printf(_("      --remote-port=port           remote host port (default: 22)\n"));
-	printf(_("      --remote-path=path           path to directory with pg_probackup binary on remote host\n"));
+	printf(_("      --remote-path=path           path to directory with %s binary on remote host\n"), PROGRAM_NAME);
 	printf(_("                                   (default: current binary path)\n"));
 	printf(_("      --remote-user=username       user name for ssh connection (default: current user)\n"));
 	printf(_("      --ssh-options=ssh_options    additional ssh options (default: none)\n"));

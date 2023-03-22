@@ -110,7 +110,7 @@ static void set_output_numeric_locale(output_numeric_locale loc) {
 }
 
 /*
- * Entry point of pg_probackup SHOW subcommand.
+ * Entry point of pg_backup SHOW subcommand.
  */
 int
 do_show(CatalogState *catalogState, InstanceState *instanceState, 

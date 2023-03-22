@@ -1,5 +1,3 @@
-****[see wiki](https://confluence.postgrespro.ru/display/DEV/pg_probackup)
-
 ```
 Note: For now these tests work on Linux and "kinda" work on Windows
 ```
@@ -24,13 +22,13 @@ Check archive compression:
 Enable compatibility tests:
  export PGPROBACKUPBIN_OLD=/path/to/previous_version_pg_probackup_binary
 
-Specify path to pg_probackup binary file. By default tests use <Path to Git repository>/pg_probackup/
+Specify path to pg_backup binary file. By default tests use <Path to Git repository>/pg_backup/
  export PGPROBACKUPBIN=<path to pg_probackup>
 
 Remote backup depends on key authentication to local machine via ssh as current user.
  export PGPROBACKUP_SSH_REMOTE=ON
 
-Run tests that are relied on advanced debugging features. For this mode, pg_probackup should be compiled without optimizations. For example:
+Run tests that are relied on advanced debugging features. For this mode, pg_backup should be compiled without optimizations. For example:
 CFLAGS="-O0" ./configure --prefix=/path/to/prefix --enable-debug --enable-cassert --enable-depend --enable-tap-tests --enable-nls
 
  export PGPROBACKUP_GDB=ON

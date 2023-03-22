@@ -1,7 +1,7 @@
-PROGRAM = pg_probackup
+PROGRAM = pg_backup
 WORKDIR ?= $(CURDIR)
 BUILDDIR = $(WORKDIR)/build/
-PBK_GIT_REPO = https://github.com/postgrespro/pg_probackup
+PBK_GIT_REPO = https://github.com/pgtoolz/pg_backup
 
 # utils
 OBJS = src/utils/configuration.o src/utils/json.o src/utils/logger.o \
@@ -24,7 +24,7 @@ ifdef top_srcdir
 srchome := $(abspath $(top_srcdir))
 else
 top_srcdir=../..
-ifneq (,$(wildcard ../../../contrib/pg_probackup))
+ifneq (,$(wildcard ../../../contrib/pg_backup))
 # separate build directory support
 srchome := $(abspath $(top_srcdir)/..)
 else
@@ -43,7 +43,7 @@ PG_CONFIG = pg_config
 PGXS := $(shell $(PG_CONFIG) --pgxs)
 include $(PGXS)
 else
-subdir=contrib/pg_probackup
+subdir=contrib/pg_backup
 top_builddir=../..
 include $(top_builddir)/src/Makefile.global
 include $(top_srcdir)/contrib/contrib-global.mk

@@ -1,7 +1,7 @@
 /*-------------------------------------------------------------------------
  *
  * src/checkdb.c
- * pg_probackup checkdb subcommand
+ * pg_backup checkdb subcommand
  *
  * It allows to validate all data files located in PGDATA
  * via block checksums matching and page header sanity checks.
@@ -733,7 +733,7 @@ do_amcheck(ConnectionOptions conn_opt, PGconn *conn)
 							   "All databases were amchecked.");
 }
 
-/* Entry point of pg_probackup CHECKDB subcommand */
+/* Entry point of pg_backup CHECKDB subcommand */
 void
 do_checkdb(bool need_amcheck,
 		   ConnectionOptions conn_opt, char *pgdata)

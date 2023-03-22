@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  *
- * archive.c: -  pg_probackup specific archive commands for archive backups.
+ * archive.c: -  pg_backup specific archive commands for archive backups.
  *
  *
  * Portions Copyright (c) 2018-2022, Postgres Professional
@@ -106,9 +106,9 @@ static parray *setup_push_filelist(const char *archive_status_dir,
  * At this point, we already done one roundtrip to archive server
  * to get instance config.
  *
- * pg_probackup specific archive command for archive backups
+ * pg_backup specific archive command for archive backups
  * set archive_command to
- * 'pg_probackup archive-push -B /home/anastasia/backup --wal-file-name %f',
+ * 'pg_backup archive-push -B /home/anastasia/backup --wal-file-name %f',
  * to move backups into arclog_path.
  * Where archlog_path is $BACKUP_PATH/wal/instance_name
  */
@@ -154,9 +154,9 @@ do_archive_push(InstanceState *instanceState, InstanceConfig *instance, char *pg
 	if (num_threads > parray_num(batch_files))
 		n_threads = parray_num(batch_files);
 
-	elog(INFO, "pg_probackup archive-push WAL file: %s, "
+	elog(INFO, "%s archive-push WAL file: %s, "
 					"threads: %i/%i, batch: %lu/%i, compression: %s",
-						wal_file_name, n_threads, num_threads,
+						PROGRAM_NAME, wal_file_name, n_threads, num_threads,
 						parray_num(batch_files), batch_size,
 						is_compress ? "zlib" : "none");
 
@@ -265,13 +265,13 @@ push_done:
 
 	if (push_isok)
 		/* report number of files pushed into archive */
-		elog(INFO, "pg_probackup archive-push completed successfully, "
+		elog(INFO, "%s archive-push completed successfully, "
 					"pushed: %u, skipped: %u, time elapsed: %s",
-					n_total_pushed, n_total_skipped, pretty_time_str);
+					PROGRAM_NAME, n_total_pushed, n_total_skipped, pretty_time_str);
 	else
-		elog(ERROR, "pg_probackup archive-push failed, "
+		elog(ERROR, "%s archive-push failed, "
 					"pushed: %i, skipped: %u, failed: %u, time elapsed: %s",
-					n_total_pushed, n_total_skipped, n_total_failed,
+					PROGRAM_NAME, n_total_pushed, n_total_skipped, n_total_failed,
 					pretty_time_str);
 }
 
@@ -968,7 +968,7 @@ setup_push_filelist(const char *archive_status_dir, const char *first_file,
 }
 
 /*
- * pg_probackup specific restore command.
+ * pg_backup specific restore command.
  * Move files from arclog_path to pgdata/wal_file_path.
  *
  *  The problem with archive-get: we must be very careful about
@@ -1027,8 +1027,8 @@ do_archive_get(InstanceState *instanceState, InstanceConfig *instance, const cha
 	INSTR_TIME_SET_CURRENT(start_time);
 	if (num_threads > batch_size)
 		n_actual_threads = batch_size;
-	elog(INFO, "pg_probackup archive-get WAL file: %s, remote: %s, threads: %i/%i, batch: %i",
-			wal_file_name, IsSshProtocol() ? "ssh" : "none", n_actual_threads, num_threads, batch_size);
+	elog(INFO, "%s archive-get WAL file: %s, remote: %s, threads: %i/%i, batch: %i",
+			PROGRAM_NAME, wal_file_name, IsSshProtocol() ? "ssh" : "none", n_actual_threads, num_threads, batch_size);
 
 	num_threads = n_actual_threads;
 
@@ -1084,8 +1084,8 @@ do_archive_get(InstanceState *instanceState, InstanceConfig *instance, const cha
 										  validate_wal))
 			{
 				n_files_in_prefetch--;
-				elog(INFO, "pg_probackup archive-get used prefetched WAL segment %s, prefetch state: %u/%u",
-						wal_file_name, n_files_in_prefetch, batch_size);
+				elog(INFO, "%s archive-get used prefetched WAL segment %s, prefetch state: %u/%u",
+						PROGRAM_NAME, wal_file_name, n_files_in_prefetch, batch_size);
 				goto get_done;
 			}
 			else
@@ -1122,8 +1122,8 @@ do_archive_get(InstanceState *instanceState, InstanceConfig *instance, const cha
 										  instance->xlog_seg_size, validate_wal))
 			{
 				n_files_in_prefetch--;
-				elog(INFO, "pg_probackup archive-get copied WAL file %s, prefetch state: %u/%u",
-						wal_file_name, n_files_in_prefetch, batch_size);
+				elog(INFO, "%s archive-get copied WAL file %s, prefetch state: %u/%u",
+						PROGRAM_NAME, wal_file_name, n_files_in_prefetch, batch_size);
 				goto get_done;
 			}
 //			else
@@ -1154,7 +1154,7 @@ do_archive_get(InstanceState *instanceState, InstanceConfig *instance, const cha
 		if (get_wal_file(wal_file_name, backup_wal_file_path, absolute_wal_file_path, false))
 		{
 			fail_count = 0;
-			elog(LOG, "pg_probackup archive-get copied WAL file %s", wal_file_name);
+			elog(LOG, "%s archive-get copied WAL file %s", PROGRAM_NAME, wal_file_name);
 			n_fetched++;
 			break;
 		}
@@ -1182,11 +1182,11 @@ get_done:
 	pretty_time_interval(get_time, pretty_time_str, 20);
 
 	if (fail_count == 0)
-		elog(INFO, "pg_probackup archive-get completed successfully, fetched: %i/%i, time elapsed: %s",
-				n_fetched, batch_size, pretty_time_str);
+		elog(INFO, "%s archive-get completed successfully, fetched: %i/%i, time elapsed: %s",
+				PROGRAM_NAME, n_fetched, batch_size, pretty_time_str);
 	else
-		elog(ERROR, "pg_probackup archive-get failed to deliver WAL file: %s, time elapsed: %s",
-				wal_file_name, pretty_time_str);
+		elog(ERROR, "%s archive-get failed to deliver WAL file: %s, time elapsed: %s",
+				PROGRAM_NAME, wal_file_name, pretty_time_str);
 }
 
 /*

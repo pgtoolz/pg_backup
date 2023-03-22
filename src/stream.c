@@ -1,6 +1,6 @@
 /*-------------------------------------------------------------------------
  *
- * stream.c: pg_probackup specific code for WAL streaming
+ * stream.c: pg_backup specific code for WAL streaming
  *
  * Portions Copyright (c) 2015-2020, Postgres Professional
  *
@@ -21,7 +21,7 @@
  * standby_message_timeout controls how often we send a message
  * back to the primary letting it know our progress, in milliseconds.
  *
- * in pg_probackup we use a default setting = 10 sec
+ * in pg_backup we use a default setting = 10 sec
  */
 static int	standby_message_timeout = 10 * 1000;
 
