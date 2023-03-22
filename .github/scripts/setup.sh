@@ -65,4 +65,4 @@ fi
 
 pip3 install testgres
 
-useradd postgres
+#useradd postgres
