@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-
 set -xe
+
+export PGHOME=/pg
 
 if [ -z ${PG_VERSION+x} ]; then
 	echo PG_VERSION is not set!
@@ -16,7 +17,9 @@ fi
 #	PTRACK_PATCH_PG_BRANCH=OFF
 #fi
 
-export PGHOME=/pg
+export DEBIAN_FRONTEND=noninteractive
+apt update
+apt install -y curl ca-certificates gnupg lsb-release build-essential
 
 # Clone Postgres
 echo "############### Getting Postgres sources:"
