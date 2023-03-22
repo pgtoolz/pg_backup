@@ -14,4 +14,5 @@ echo "############### Testing:"
 export PG_CONFIG=$PGHOME/bin/pg_config
 export PG_PROBACKUP_TEST_BASIC=ON
 chown -R postgres ./
+ls -la
 su -p postgres -c 'USER=postgres python3 -m unittest -v tests'
