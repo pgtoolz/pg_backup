@@ -63,6 +63,9 @@ fi
 
 pip3 install testgres
 
+pwd
+ls -la
+
 # Build and install pg_probackup (using PG_CPPFLAGS and SHLIB_LINK for gcov)
 echo "############### Compiling and installing pg_probackup:"
 export PG_SRC=$PWD/postgres

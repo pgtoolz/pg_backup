@@ -2,8 +2,6 @@
 
 set -xe
 
-export PG_CONFIG=$PGHOME/bin/pg_config
-
 echo "############### Testing:"
 #echo PG_PROBACKUP_PARANOIA=${PG_PROBACKUP_PARANOIA}
 #echo ARCHIVE_COMPRESSION=${ARCHIVE_COMPRESSION}
@@ -13,6 +11,7 @@ echo "############### Testing:"
 #echo PGPROBACKUP_GDB=${PGPROBACKUP_GDB}
 #echo PG_PROBACKUP_PTRACK=${PG_PROBACKUP_PTRACK}
 
+export PG_CONFIG=$PGHOME/bin/pg_config
 export PG_PROBACKUP_TEST_BASIC=ON
 chown -R postgres ./
 su -p postgres -c 'USER=postgres python3 -m unittest -v tests'
