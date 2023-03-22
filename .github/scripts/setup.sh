@@ -18,10 +18,8 @@ fi
 #fi
 
 export DEBIAN_FRONTEND=noninteractive
-apt update
-apt install -y curl ca-certificates gnupg lsb-release build-essential gcc make
-
-gcc --help
+apt-get update
+apt-get install -q -y curl ca-certificates gnupg lsb-release build-essential gcc make zlib1g-dev
 
 # Clone Postgres
 echo "############### Getting Postgres sources:"
@@ -43,7 +41,7 @@ cd postgres # Go to postgres dir
 #fi
 CFLAGS="-Og" ./configure --prefix=$PGHOME \
     --enable-debug --enable-cassert --enable-depend \
-    --enable-tap-tests --enable-nls
+    --enable-tap-tests --without-readline
 make -s -j$(nproc) install
 make -s -j$(nproc) -C contrib/ install
 
