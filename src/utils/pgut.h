@@ -104,11 +104,6 @@ extern FILE *pgut_fopen(const char *path, const char *mode, bool missing_ok);
 extern int wait_for_socket(int sock, struct timeval *timeout);
 extern int wait_for_sockets(int nfds, fd_set *fds, struct timeval *timeout);
 
-#ifdef WIN32
-extern int sleep(unsigned int seconds);
-extern int usleep(unsigned int usec);
-#endif
-
 #ifdef _MSC_VER
 #define ARG_SIZE_HINT
 #else

@@ -67,7 +67,7 @@ help_command(ProbackupSubcmd const subcmd)
 		&help_set_backup,
 		&help_show_config,
 		&help_checkdb,
-		&help_internal, // SSH_CMD
+		&help_nocmd, // SSH_CMD
 		&help_internal, // AGENT_CMD
 		&help_help,
 		&help_version,

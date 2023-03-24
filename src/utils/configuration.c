@@ -18,9 +18,7 @@
 
 #include "getopt_long.h"
 
-#ifndef WIN32
 #include <pwd.h>
-#endif
 #include <time.h>
 #include <pwd.h>
 
@@ -470,23 +468,10 @@ get_username(void)
 {
 	const char *ret;
 
-#ifndef WIN32
 	struct passwd *pw;
 
 	pw = getpwuid(geteuid());
 	ret = (pw ? pw->pw_name : NULL);
-#else
-	static char username[128];	/* remains after function exit */
-	DWORD		len = sizeof(username) - 1;
-
-	if (GetUserName(username, &len))
-		ret = username;
-	else
-	{
-		_dosmaperr(GetLastError());
-		ret = NULL;
-	}
-#endif
 
 	if (ret == NULL)
 		elog(ERROR, "Could not get current user name: %s", strerror(errno));
@@ -1293,10 +1278,7 @@ parse_time(const char *value, time_t *result, bool utc_default)
 	if (tz_set || utc_default)
 	{
 		/* set timezone to UTC */
-		pgut_setenv("TZ", "UTC");
-#ifdef WIN32
-		tzset();
-#endif
+		setenv("TZ", "UTC", 1);
 	}
 
 	/* convert time to utc unix time */
@@ -1304,13 +1286,9 @@ parse_time(const char *value, time_t *result, bool utc_default)
 
 	/* return old timezone back if any */
 	if (local_tz)
-		pgut_setenv("TZ", local_tz);
+		setenv("TZ", local_tz, 1);
 	else
-		pgut_unsetenv("TZ");
-
-#ifdef WIN32
-	tzset();
-#endif
+		unsetenv("TZ");
 
 	/* adjust time zone */
 	if (tz_set || utc_default)
@@ -1551,10 +1529,7 @@ time2iso(char *buf, size_t len, time_t time, bool utc)
 	/* set timezone to UTC if requested */
 	if (utc)
 	{
-		pgut_setenv("TZ", "UTC");
-#ifdef WIN32
-		tzset();
-#endif
+		setenv("TZ", "UTC", 1);
 	}
 
 	ptm = gmtime(&time);
@@ -1565,12 +1540,9 @@ time2iso(char *buf, size_t len, time_t time, bool utc)
 	{
 		/* return old timezone back if any */
 		if (local_tz)
-			pgut_setenv("TZ", local_tz);
+			setenv("TZ", local_tz, 1);
 		else
-			pgut_unsetenv("TZ");
-#ifdef WIN32
-		tzset();
-#endif
+			unsetenv("TZ");
 	}
 
 	/* adjust timezone offset */
