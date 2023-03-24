@@ -126,13 +126,11 @@ init_logger(const char *root_path, LoggerConfig *config)
 }
 
 /*
- * Check that we are connected to terminal and
- * enable ANSI escape codes for Windows if possible
+ * Check that we are connected to terminal
  */
 void
 init_console(void)
 {
-
 	/* no point in tex coloring if we do not connected to terminal */
 	if (!isatty(fileno(stderr)) ||
 		!isatty(fileno(stdout)))
@@ -140,67 +138,6 @@ init_console(void)
 		show_color = false;
 		return;
 	}
-
-#ifdef WIN32
-	HANDLE hOut = INVALID_HANDLE_VALUE;
-	HANDLE hErr = INVALID_HANDLE_VALUE;
-	DWORD dwMode_out = 0;
-	DWORD dwMode_err = 0;
-
-	hOut = GetStdHandle(STD_OUTPUT_HANDLE);
-	if (hOut == INVALID_HANDLE_VALUE || !hOut)
-	{
-		show_color = false;
-		_dosmaperr(GetLastError());
-		elog(WARNING, "Failed to get terminal stdout handle: %s", strerror(errno));
-		return;
-	}
-
-	hErr = GetStdHandle(STD_ERROR_HANDLE);
-	if (hErr == INVALID_HANDLE_VALUE || !hErr)
-	{
-		show_color = false;
-		_dosmaperr(GetLastError());
-		elog(WARNING, "Failed to get terminal stderror handle: %s", strerror(errno));
-		return;
-	}
-
-	if (!GetConsoleMode(hOut, &dwMode_out))
-	{
-		show_color = false;
-		_dosmaperr(GetLastError());
-		elog(WARNING, "Failed to get console mode for stdout: %s", strerror(errno));
-		return;
-	}
-
-	if (!GetConsoleMode(hErr, &dwMode_err))
-	{
-		show_color = false;
-		_dosmaperr(GetLastError());
-		elog(WARNING, "Failed to get console mode for stderr: %s", strerror(errno));
-		return;
-	}
-
-	/* Add ANSI codes support */
-	dwMode_out |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-	dwMode_err |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-
-	if (!SetConsoleMode(hOut, dwMode_out))
-	{
-		show_color = false;
-		_dosmaperr(GetLastError());
-		elog(WARNING, "Cannot set console mode for stdout: %s", strerror(errno));
-		return;
-	}
-
-	if (!SetConsoleMode(hErr, dwMode_err))
-	{
-		show_color = false;
-		_dosmaperr(GetLastError());
-		elog(WARNING, "Cannot set console mode for stderr: %s", strerror(errno));
-		return;
-	}
-#endif
 }
 
 static void
@@ -285,11 +222,7 @@ exit_if_necessary(int elevel)
 		{
 			/* Interrupt other possible routines */
 			thread_interrupted = true;
-#ifdef WIN32
-			ExitThread(elevel);
-#else
 			pthread_exit(NULL);
-#endif
 		}
 		else
 			exit(elevel);
@@ -331,7 +264,7 @@ elog_internal(int elevel, bool file_only, const char *message)
 		write_to_stderr |= write_to_error_log | write_to_file;
 		write_to_error_log = write_to_file = false;
 	}
-	pthread_lock(&log_file_mutex);
+	pthread_mutex_lock(&log_file_mutex);
 	loggin_in_progress = true;
 
 	if (write_to_file || write_to_error_log || is_archive_cmd ||
@@ -786,11 +719,7 @@ logfile_getname(const char *format, time_t timestamp)
 	len = strlen(filename);
 
 	/* Treat log_filename as a strftime pattern */
-#ifdef WIN32
-	if (pg_strftime(filename + len, MAXPGPATH - len, format, tm) <= 0)
-#else
 	if (strftime(filename + len, MAXPGPATH - len, format, tm) <= 0)
-#endif
 		elog_stderr(ERROR, "strftime(%s) failed: %s", format, strerror(errno));
 
 	return filename;

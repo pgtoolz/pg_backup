@@ -1,15 +1,10 @@
 ```
-Note: For now these tests work on Linux and "kinda" work on Windows
+Note: For now these tests work on Linux
 ```
 
 ```
 Note: tests require python3 to work properly.
 ```
-
-```
-Windows Note: For tablespaces tests to work on Windows, you should explicitly(!) grant current user full access to tmp_dirs
-```
-
 
 ```
 Check physical correctness of restored instances:

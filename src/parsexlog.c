@@ -1468,7 +1468,7 @@ XLogThreadWorker(void *arg)
 			{
 				XLogSegNo	segno_report;
 
-				pthread_lock(&wal_segment_mutex);
+				pthread_mutex_lock(&wal_segment_mutex);
 				segno_report = segno_start + segnum_read;
 				pthread_mutex_unlock(&wal_segment_mutex);
 
@@ -1523,7 +1523,7 @@ XLogThreadWorker(void *arg)
 		{
 			thread_arg->got_target = true;
 
-			pthread_lock(&wal_segment_mutex);
+			pthread_mutex_lock(&wal_segment_mutex);
 			/* We should store least target segment number */
 			if (segno_target == 0 || segno_target > reader_data->xlogsegno)
 				segno_target = reader_data->xlogsegno;
@@ -1541,7 +1541,7 @@ XLogThreadWorker(void *arg)
 		{
 			XLogSegNo	segno;
 
-			pthread_lock(&wal_segment_mutex);
+			pthread_mutex_lock(&wal_segment_mutex);
 			segno = segno_target;
 			pthread_mutex_unlock(&wal_segment_mutex);
 
@@ -1589,7 +1589,7 @@ SwitchThreadToNextWal(XLogReaderState *xlogreader, xlog_thread_arg *arg)
 	reader_data->need_switch = false;
 
 	/* Critical section */
-	pthread_lock(&wal_segment_mutex);
+	pthread_mutex_lock(&wal_segment_mutex);
 	Assert(segno_next);
 	reader_data->xlogsegno = segno_next;
 	segnum_read++;
@@ -1623,7 +1623,7 @@ SwitchThreadToNextWal(XLogReaderState *xlogreader, xlog_thread_arg *arg)
 		{
 			XLogSegNo	segno_report;
 
-			pthread_lock(&wal_segment_mutex);
+			pthread_mutex_lock(&wal_segment_mutex);
 			segno_report = segno_start + segnum_read;
 			pthread_mutex_unlock(&wal_segment_mutex);
 
@@ -1684,7 +1684,7 @@ XLogWaitForConsistency(XLogReaderState *xlogreader)
 			elog(ERROR, "Thread [%d]: Interrupted during WAL reading",
 				 reader_data->thread_num);
 
-		pthread_lock(&wal_segment_mutex);
+		pthread_mutex_lock(&wal_segment_mutex);
 		segnum_current_read = segnum_read + segnum_corrupted;
 		segno = segno_target;
 		pthread_mutex_unlock(&wal_segment_mutex);
@@ -1693,7 +1693,7 @@ XLogWaitForConsistency(XLogReaderState *xlogreader)
 		if (segnum_need <= segnum_current_read)
 		{
 			/* Mark current segment as corrupted */
-			pthread_lock(&wal_segment_mutex);
+			pthread_mutex_lock(&wal_segment_mutex);
 			segnum_corrupted++;
 			pthread_mutex_unlock(&wal_segment_mutex);
 			return false;

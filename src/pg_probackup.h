@@ -10,6 +10,7 @@
 #ifndef PG_PROBACKUP_H
 #define PG_PROBACKUP_H
 
+#include <pthread.h>
 
 #include "postgres_fe.h"
 #include "libpq-fe.h"
@@ -43,12 +44,6 @@
 
 #include "pg_probackup_state.h"
 
-
-#ifdef WIN32
-#define __thread __declspec(thread)
-#else
-#include <pthread.h>
-#endif
 
 #if PG_VERSION_NUM >= 150000
 // _() is explicitly undefined in libpq-int.h
@@ -1026,7 +1021,6 @@ extern bool is_parent(time_t parent_backup_time, pgBackup *child_backup, bool in
 extern bool is_prolific(parray *backup_list, pgBackup *target_backup);
 extern void append_children(parray *backup_list, pgBackup *target_backup, parray *append_list);
 extern bool launch_agent(void);
-extern void launch_ssh(char* argv[]);
 extern void wait_ssh(void);
 
 #define COMPRESS_ALG_DEFAULT NOT_DEFINED_COMPRESS
@@ -1263,9 +1257,6 @@ extern void fio_list_dir(parray *files, const char *root, bool exclude, bool fol
 						 bool add_root, bool backup_logs, bool skip_hidden, int external_dir_num);
 
 extern bool pgut_rmtree(const char *path, bool rmtopdir, bool strict);
-
-extern void pgut_setenv(const char *key, const char *val);
-extern void pgut_unsetenv(const char *key);
 
 extern PageState *fio_get_checksum_map(const char *fullpath, uint32 checksum_version, int n_blocks,
 									XLogRecPtr dest_stop_lsn, BlockNumber segmentno, fio_location location);

@@ -1,9 +1,8 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #include "pg_probackup.h"
-/* sys/stat.h must be included after pg_probackup.h (see problems with compilation for windows described in PGPRO-5750) */
-#include <sys/stat.h>
 
 #include "file.h"
 #include "storage/checksum.h"
@@ -83,20 +82,9 @@ typedef struct
 /* Convert FIO pseudo handle to index in file descriptor array */
 #define fio_fileno(f) (((size_t)f - 1) | FIO_PIPE_MARKER)
 
-#if defined(WIN32)
-#undef open(a, b, c)
-#undef fopen(a, b)
-#endif
-
 void
 setMyLocation(ProbackupSubcmd const subcmd)
 {
-
-#ifdef WIN32
-	if (IsSshProtocol())
-		elog(ERROR, "Currently remote operations on Windows are not supported");
-#endif
-
 	MyLocation = IsSshProtocol()
 		? (subcmd == ARCHIVE_PUSH_CMD || subcmd == ARCHIVE_GET_CMD)
 		   ? FIO_DB_HOST
@@ -144,66 +132,6 @@ fio_is_remote_fd(int fd)
 {
 	return (fd & FIO_PIPE_MARKER) != 0;
 }
-
-#ifdef WIN32
-
-#undef stat
-
-/*
- * The stat() function in win32 is not guaranteed to update the st_size
- * field when run. So we define our own version that uses the Win32 API
- * to update this field.
- */
-static int
-fio_safestat(const char *path, struct stat *buf)
-{
-    int            r;
-    WIN32_FILE_ATTRIBUTE_DATA attr;
-
-    r = stat(path, buf);
-    if (r < 0)
-        return r;
-
-    if (!GetFileAttributesEx(path, GetFileExInfoStandard, &attr))
-    {
-        errno = ENOENT;
-        return -1;
-    }
-
-    /*
-     * XXX no support for large files here, but we don't do that in general on
-     * Win32 yet.
-     */
-    buf->st_size = attr.nFileSizeLow;
-
-    return 0;
-}
-
-#define stat(x, y) fio_safestat(x, y)
-
-/* TODO: use real pread on Linux */
-static ssize_t
-pread(int fd, void* buf, size_t size, off_t off)
-{
-	off_t rc = lseek(fd, off, SEEK_SET);
-	if (rc != off)
-		return -1;
-	return read(fd, buf, size);
-}
-
-static int
-remove_file_or_dir(char const* path)
-{
-	int rc = remove(path);
-#ifdef WIN32
-	if (rc < 0 && errno == EACCESS)
-		rc = rmdir(path);
-#endif
-	return rc;
-}
-#else
-#define remove_file_or_dir(path) remove(path)
-#endif
 
 /* Check if specified location is local for current node */
 bool
@@ -312,13 +240,7 @@ fio_open_stream(char const* path, fio_location location)
 			Assert(fio_stdin_buffer == NULL);
 			fio_stdin_buffer = pgut_malloc(hdr.size);
 			IO_CHECK(fio_read_all(fio_stdin, fio_stdin_buffer, hdr.size), hdr.size);
-#ifdef WIN32
-			f = tmpfile();
-			IO_CHECK(fwrite(fio_stdin_buffer, 1, hdr.size, f), hdr.size);
-			SYS_CHECK(fseek(f, 0, SEEK_SET));
-#else
 			f = fmemopen(fio_stdin_buffer, hdr.size, "r");
-#endif
 		}
 		else
 		{
@@ -1154,12 +1076,10 @@ fio_stat(char const* path, struct stat* st, bool follow_symlink, fio_location lo
 
 /*
  * Compare, that filename1 and filename2 is the same file
- * in windows compare only filenames
  */
 bool
 fio_is_same_file(char const* filename1, char const* filename2, bool follow_symlink, fio_location location)
 {
-#ifndef WIN32
 	struct stat	stat1, stat2;
 
 	if (fio_stat(filename1, &stat1, follow_symlink, location) < 0)
@@ -1169,14 +1089,6 @@ fio_is_same_file(char const* filename1, char const* filename2, bool follow_symli
 		elog(ERROR, "Can't stat file \"%s\": %s", filename2, strerror(errno));
 
 	return stat1.st_ino == stat2.st_ino && stat1.st_dev == stat2.st_dev;
-#else
-	char	*abs_name1 = make_absolute_path(filename1);
-	char	*abs_name2 = make_absolute_path(filename2);
-	bool	result = strcmp(abs_name1, abs_name2) == 0;
-	free(abs_name2);
-	free(abs_name1);
-	return result;
-#endif
 }
 
 /*
@@ -1274,7 +1186,7 @@ fio_symlink(char const* target, char const* link_path, bool overwrite, fio_locat
 	else
 	{
 		if (overwrite)
-			remove_file_or_dir(link_path);
+			remove(link_path);
 
 		return symlink(target, link_path);
 	}
@@ -1287,7 +1199,7 @@ fio_symlink_impl(int out, char *buf, bool overwrite)
 	char *link_path = buf + strlen(buf) + 1;
 
 	if (overwrite)
-		remove_file_or_dir(link_path);
+		remove(link_path);
 
 	if (symlink(linked_path, link_path))
 		elog(ERROR, "Could not create symbolic link \"%s\": %s",
@@ -1446,7 +1358,7 @@ fio_unlink(char const* path, fio_location location)
 	}
 	else
 	{
-		return remove_file_or_dir(path);
+		return remove(path);
 	}
 }
 
@@ -3767,11 +3679,6 @@ fio_communicate(int in, int out)
 	int tmp_fd;
 	pg_crc32 crc;
 
-#ifdef WIN32
-    SYS_CHECK(setmode(in, _O_BINARY));
-    SYS_CHECK(setmode(out, _O_BINARY));
-#endif
-
     /* Main loop until end of processing all master commands */
 	while ((rc = fio_read_all(in, &hdr, sizeof hdr)) == sizeof(hdr)) {
 		if (hdr.size != 0) {
@@ -3880,8 +3787,8 @@ fio_communicate(int in, int out)
 		  case FIO_SYMLINK: /* Create symbolic link */
 			fio_symlink_impl(out, buf, hdr.arg > 0 ? true : false);
 			break;
-		  case FIO_UNLINK: /* Remove file or directory (TODO: Win32) */
-			SYS_CHECK(remove_file_or_dir(buf));
+		  case FIO_UNLINK: /* Remove file or directory */
+			SYS_CHECK(remove(buf));
 			break;
 		  case FIO_MKDIR:  /* Create directory */
 			hdr.size = 0;

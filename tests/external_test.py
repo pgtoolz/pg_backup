@@ -1464,9 +1464,6 @@ class ExternalTest(ProbackupTest, unittest.TestCase):
         symlink pointing to external dir should be followed,
         but restored as directory
         """
-        if os.name == 'nt':
-            self.skipTest('Skipped for Windows')
-
         backup_dir = os.path.join(self.tmp_path, self.module_name, self.fname, 'backup')
         core_dir = os.path.join(self.tmp_path, self.module_name, self.fname)
         shutil.rmtree(core_dir, ignore_errors=True)
@@ -1543,9 +1540,6 @@ class ExternalTest(ProbackupTest, unittest.TestCase):
         symlink pointing to external dir should be followed,
         but restored as directory
         """
-        if os.name == 'nt':
-            self.skipTest('Skipped for Windows')
-
         backup_dir = os.path.join(self.tmp_path, self.module_name, self.fname, 'backup')
         core_dir = os.path.join(self.tmp_path, self.module_name, self.fname)
         shutil.rmtree(core_dir, ignore_errors=True)
@@ -1624,9 +1618,6 @@ class ExternalTest(ProbackupTest, unittest.TestCase):
         symlink pointing to external dir should be followed,
         but restored as directory
         """
-        if os.name == 'nt':
-            self.skipTest('Skipped for Windows')
-
         backup_dir = os.path.join(self.tmp_path, self.module_name, self.fname, 'backup')
         core_dir = os.path.join(self.tmp_path, self.module_name, self.fname)
         shutil.rmtree(core_dir, ignore_errors=True)

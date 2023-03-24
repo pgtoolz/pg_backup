@@ -408,11 +408,6 @@ doc/src/sgml/pgprobackup.sgml
       </listitem>
       <listitem>
         <para>
-          The remote mode is not supported on Windows systems.
-        </para>
-      </listitem>
-      <listitem>
-        <para>
           On Unix systems, for <productname>PostgreSQL</productname> 10 or lower,
           a backup can be made only by the same OS user that has started the <productname>PostgreSQL</productname>
           server. For example, if <productname>PostgreSQL</productname> server is started by
@@ -1408,7 +1403,7 @@ pg_backup backup -B <replaceable>backup_dir</replaceable> --instance <replaceabl
         use the optional <option>--external-dirs</option> parameter
         that specifies the path to this directory. If you would like
         to add more than one external directory, you can provide several paths
-        separated by colons on Linux systems or semicolons on Windows systems.
+        separated by colons on Linux systems.
       </para>
       <para>
         For example, to include <filename>/etc/dir1</filename> and
@@ -1419,14 +1414,6 @@ pg_backup backup -B <replaceable>backup_dir</replaceable> --instance <replaceabl
       </para>
       <programlisting>
 pg_backup backup -B <replaceable>backup_dir</replaceable> --instance <replaceable>instance_name</replaceable> -b FULL --external-dirs=/etc/dir1:/etc/dir2
-</programlisting>
-      <para>
-        Similarly, to include <filename>C:\dir1</filename> and
-        <filename>C:\dir2</filename> directories into the full backup
-        on Windows, run:
-      </para>
-      <programlisting>
-pg_backup backup -B <replaceable>backup_dir</replaceable> --instance <replaceable>instance_name</replaceable> -b FULL --external-dirs=C:\dir1;C:\dir2
 </programlisting>
       <para>
         <application>pg_backup</application> recursively copies the contents
@@ -2076,12 +2063,6 @@ restore_command = '"<replaceable>install_dir</replaceable>/pg_backup" archive-ge
     <programlisting>
 pg_backup restore -B <replaceable>backup_dir</replaceable> --instance <replaceable>instance_name</replaceable> --remote-user=postgres --remote-host=192.168.0.2 --remote-port=2302 --restore-command='"<replaceable>install_dir</replaceable>/pg_backup" archive-get -B "<replaceable>backup_dir</replaceable>" --instance <replaceable>instance_name</replaceable> --wal-file-path=%p --wal-file-name=%f --remote-host=192.168.0.3 --remote-port=2303 --remote-user=backup'
 </programlisting>
-    <note>
-      <para>
-        The remote mode is currently unavailable for
-        Windows systems.
-      </para>
-    </note>
   </refsect2>
   <refsect2 id="pbk-running-pg-probackup-on-parallel-threads">
     <title>Running <application>pg_backup</application> on Parallel Threads</title>
@@ -2193,7 +2174,7 @@ pg_backup show-config -B <replaceable>backup_dir</replaceable> --instance <repla
     <para>
       If nothing is given, the default values are taken. By default
       <application>pg_backup</application> tries to use local connection via Unix domain
-      socket (<literal>localhost</literal> on Windows) and tries to get the database name
+      socket and tries to get the database name
       and the user name from the <envar>PGUSER</envar> environment variable or the
       current OS user name.
     </para>
@@ -3871,7 +3852,7 @@ pg_backup backup -B <replaceable>backup_dir</replaceable> -b <replaceable>backup
         is useful to back up scripts, SQL dump files, and configuration
         files located outside of the data directory. If you would like
         to back up several external directories, separate their paths
-        by a colon on Unix and a semicolon on Windows.
+        by a colon on Unix.
       </para>
       </listitem>
       </varlistentry>

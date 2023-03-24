@@ -35,7 +35,7 @@ typedef enum ProbackupSubcmd
 	SET_BACKUP_CMD,
 	SHOW_CONFIG_CMD,
 	CHECKDB_CMD,
-	SSH_CMD,
+	SSH_CMD, /* pg_probackup legacy, not used anymore */
 	AGENT_CMD,
 	HELP_CMD,
 	VERSION_CMD,
