@@ -57,8 +57,8 @@ const char  *PROGRAM_NAME = NULL;		/* PROGRAM_NAME_FULL without .exe suffix
 										 * if any */
 const char  *PROGRAM_NAME_FULL = NULL;
 const char  *PROGRAM_FULL_PATH = NULL;
-const char  *PROGRAM_URL = "https://github.com/postgrespro/pg_probackup";
-const char  *PROGRAM_EMAIL = "https://github.com/postgrespro/pg_probackup/issues";
+const char  *PROGRAM_URL = "https://github.com/pgtoolz/pg_backup";
+const char  *PROGRAM_EMAIL = "https://github.com/pgtoolz/pg_backup/issues";
 
 /* ================ catalogState =========== */
 /* directory options */
@@ -291,7 +291,7 @@ static ConfigOption cmd_options[] =
 };
 
 /*
- * Entry point of pg_probackup command.
+ * Entry point of pg_backup command.
  */
 int
 main(int argc, char *argv[])
@@ -312,7 +312,7 @@ main(int argc, char *argv[])
 	init_config(&instance_config, instance_name);
 
 	PROGRAM_NAME = get_progname(argv[0]);
-	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("pg_probackup"));
+	set_pglocale_pgservice(argv[0], PG_TEXTDOMAIN("pg_backup"));
 	PROGRAM_FULL_PATH = palloc0(MAXPGPATH);
 
 	// Setting C locale for numeric values in order to impose dot-based floating-point representation
@@ -358,22 +358,22 @@ main(int argc, char *argv[])
 				 * If we are executed as an agent for older binary, then exit with error
 				 */
 				if (argc > 2)
-					elog(ERROR, "Version mismatch, pg_probackup binary with version '%s' "
-							"is launched as an agent for pg_probackup binary with version '%s'",
-							PROGRAM_VERSION, argv[2]);
+					elog(ERROR, "Version mismatch, %s binary with version '%s' "
+							"is launched as an agent for %s binary with version '%s'",
+							PROGRAM_NAME, PROGRAM_VERSION, PROGRAM_NAME, argv[2]);
 				remote_agent = true;
 				fio_communicate(STDIN_FILENO, STDOUT_FILENO);
 				return 0;
 			case HELP_CMD:
 				if (argc > 2)
 				{
-					/* 'pg_probackup help command' style */
+					/* 'pg_backup help command' style */
 					help_command(parse_subcmd(argv[2]));
 					exit(0);
 				}
 				else
 				{
-					help_pg_probackup();
+					help_pg_backup();
 					exit(0);
 				}
 				break;
@@ -451,7 +451,7 @@ main(int argc, char *argv[])
 
 	if (help_opt)
 	{
-		/* 'pg_probackup command --help' style */
+		/* 'pg_backup command --help' style */
 		help_command(backup_subcmd);
 		exit(0);
 	}
@@ -485,7 +485,7 @@ main(int argc, char *argv[])
 							catalogState->catalog_path, WAL_SUBDIR);
 	}
 
-	/* backup_path is required for all pg_probackup commands except help, version, checkdb and catchup */
+	/* backup_path is required for all pg_backup commands except help, version, checkdb and catchup */
 	if (backup_path == NULL &&
 		backup_subcmd != CHECKDB_CMD &&
 		backup_subcmd != HELP_CMD &&

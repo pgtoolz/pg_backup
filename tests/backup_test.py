@@ -2643,8 +2643,8 @@ class BackupTest(ProbackupTest, unittest.TestCase):
                     repr(self.output), self.cmd))
         except ProbackupException as e:
             self.assertIn(
-                "pg_probackup do not guarantee to be forward compatible. "
-                "Please upgrade pg_probackup binary.",
+                "pg_backup do not guarantee to be forward compatible. "
+                "Please upgrade pg_backup binary.",
                 e.message,
                 "\n Unexpected Error Message: {0}\n CMD: {1}".format(
                     repr(e.message), self.cmd))

@@ -22,7 +22,7 @@ class CVE_2018_1058(ProbackupTest, unittest.TestCase):
             "RETURNS text "
             "AS $$ "
             "BEGIN "
-            "  RAISE 'pg_probackup vulnerable!'; "
+            "  RAISE 'pg_backup vulnerable!'; "
             "END "
             "$$ LANGUAGE plpgsql")
 
@@ -47,7 +47,7 @@ class CVE_2018_1058(ProbackupTest, unittest.TestCase):
             "RETURNS record "
             "AS $$ "
             "BEGIN "
-            "  RAISE '% vulnerable!', 'pg_probackup'; "
+            "  RAISE '% vulnerable!', 'pg_backup'; "
             "END "
             "$$ LANGUAGE plpgsql")
 
@@ -57,7 +57,7 @@ class CVE_2018_1058(ProbackupTest, unittest.TestCase):
             "RETURNS record "
             "AS $$ "
             "BEGIN "
-            "  RAISE '% vulnerable!', 'pg_probackup'; "
+            "  RAISE '% vulnerable!', 'pg_backup'; "
             "END "
             "$$ LANGUAGE plpgsql; "
             "CREATE VIEW public.pg_proc AS SELECT proname FROM public.pg_proc()")
@@ -68,7 +68,7 @@ class CVE_2018_1058(ProbackupTest, unittest.TestCase):
         with open(log_file, 'r') as f:
             log_content = f.read()
             self.assertFalse(
-                'pg_probackup vulnerable!' in log_content)
+                'pg_backup vulnerable!' in log_content)
 
     # @unittest.skip("skip")
     def test_basic_checkdb_modified_search_path(self):
@@ -85,7 +85,7 @@ class CVE_2018_1058(ProbackupTest, unittest.TestCase):
             "RETURNS record "
             "AS $$ "
             "BEGIN "
-            "  RAISE 'pg_probackup vulnerable!'; "
+            "  RAISE 'pg_backup vulnerable!'; "
             "END "
             "$$ LANGUAGE plpgsql; "
             "CREATE VIEW public.pg_database AS SELECT * FROM public.pg_database()")
@@ -96,14 +96,14 @@ class CVE_2018_1058(ProbackupTest, unittest.TestCase):
             "RETURNS record "
             "AS $$ "
             "BEGIN "
-            "  RAISE 'pg_probackup vulnerable!'; "
+            "  RAISE 'pg_backup vulnerable!'; "
             "END "
             "$$ LANGUAGE plpgsql; "
             "CREATE FUNCTION public.pg_namespace(OUT oid oid, OUT nspname name) "
             "RETURNS record "
             "AS $$ "
             "BEGIN "
-            "  RAISE 'pg_probackup vulnerable!'; "
+            "  RAISE 'pg_backup vulnerable!'; "
             "END "
             "$$ LANGUAGE plpgsql; "
             "CREATE VIEW public.pg_extension AS SELECT * FROM public.pg_extension();"

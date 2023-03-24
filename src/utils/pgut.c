@@ -235,7 +235,7 @@ pgut_get_conninfo_string(PGconn *conn)
 }
 
 /* TODO: it is better to use PQconnectdbParams like in psql
- * It will allow to set application_name for pg_probackup
+ * It will allow to set application_name for pg_backup
  */
 PGconn *
 pgut_connect(const char *host, const char *port,

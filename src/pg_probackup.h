@@ -93,8 +93,8 @@ extern const char  *PROGRAM_EMAIL;
 #define HEADER_MAP_TMP  		"page_header_map_tmp"
 
 /* default replication slot names */
-#define DEFAULT_TEMP_SLOT_NAME	 "pg_probackup_slot";
-#define DEFAULT_PERMANENT_SLOT_NAME	 "pg_probackup_perm_slot";
+#define DEFAULT_TEMP_SLOT_NAME	 "pg_backup_slot";
+#define DEFAULT_PERMANENT_SLOT_NAME	 "pg_backup_perm_slot";
 
 /* Timeout defaults */
 #define ARCHIVE_TIMEOUT_DEFAULT		300
@@ -950,7 +950,7 @@ extern char *fetchFile(PGconn *conn, const char *filename, size_t *filesize);
 
 /* in help.c */
 extern void help_print_version(void);
-extern void help_pg_probackup(void);
+extern void help_pg_backup(void);
 extern void help_command(ProbackupSubcmd const subcmd);
 
 /* in validate.c */
