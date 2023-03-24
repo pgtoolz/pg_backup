@@ -1551,13 +1551,7 @@ make_external_directory_list(const char *colon_separated_dirs, bool remap)
 	parray	   *list = parray_new();
 	char	   *tmp = pg_strdup(colon_separated_dirs);
 
-#ifndef WIN32
-#define EXTERNAL_DIRECTORY_DELIMITER ":"
-#else
-#define EXTERNAL_DIRECTORY_DELIMITER ";"
-#endif
-
-	p = strtok(tmp, EXTERNAL_DIRECTORY_DELIMITER);
+	p = strtok(tmp, ":");
 	while(p!=NULL)
 	{
 		char	   *external_path = pg_strdup(p);
@@ -1582,7 +1576,7 @@ make_external_directory_list(const char *colon_separated_dirs, bool remap)
 			elog(ERROR, "External directory \"%s\" is not an absolute path",
 				 external_path);
 
-		p = strtok(NULL, EXTERNAL_DIRECTORY_DELIMITER);
+		p = strtok(NULL, ":");
 	}
 	pfree(tmp);
 	parray_qsort(list, pgCompareString);

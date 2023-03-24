@@ -260,7 +260,7 @@ pgut_connect(const char *host, const char *port,
 
 		if (PQstatus(conn) == CONNECTION_OK)
 		{
-			pthread_lock(&atexit_callback_disconnect_mutex);
+			pthread_mutex_lock(&atexit_callback_disconnect_mutex);
 			pgut_atexit_push(pgut_disconnect_callback, conn);
 			pthread_mutex_unlock(&atexit_callback_disconnect_mutex);
 			break;
@@ -414,7 +414,7 @@ pgut_disconnect(PGconn *conn)
 	if (conn)
 		PQfinish(conn);
 
-	pthread_lock(&atexit_callback_disconnect_mutex);
+	pthread_mutex_lock(&atexit_callback_disconnect_mutex);
 	pgut_atexit_pop(pgut_disconnect_callback, conn);
 	pthread_mutex_unlock(&atexit_callback_disconnect_mutex);
 }
@@ -704,10 +704,6 @@ pgut_wait(int num, PGconn *connections[], struct timeval *timeout)
 	return -1;
 }
 
-#ifdef WIN32
-static CRITICAL_SECTION cancelConnLock;
-#endif
-
 /*
  * on_before_exec
  *
@@ -720,10 +716,6 @@ on_before_exec(PGconn *conn, PGcancel *thread_cancel_conn)
 
 	if (in_cleanup)
 		return;	/* forbid cancel during cleanup */
-
-#ifdef WIN32
-	EnterCriticalSection(&cancelConnLock);
-#endif
 
 	if (thread_cancel_conn)
 	{
@@ -751,10 +743,6 @@ on_before_exec(PGconn *conn, PGcancel *thread_cancel_conn)
 
 		cancel_conn = PQgetCancel(conn);
 	}
-
-#ifdef WIN32
-	LeaveCriticalSection(&cancelConnLock);
-#endif
 }
 
 /*
@@ -769,10 +757,6 @@ on_after_exec(PGcancel *thread_cancel_conn)
 
 	if (in_cleanup)
 		return;	/* forbid cancel during cleanup */
-
-#ifdef WIN32
-	EnterCriticalSection(&cancelConnLock);
-#endif
 
 	if (thread_cancel_conn)
 	{
@@ -795,9 +779,6 @@ on_after_exec(PGcancel *thread_cancel_conn)
 		if (old != NULL)
 			PQfreeCancel(old);
 	}
-#ifdef WIN32
-	LeaveCriticalSection(&cancelConnLock);
-#endif
 }
 
 /*
@@ -1016,11 +997,6 @@ pgut_fopen(const char *path, const char *mode, bool missing_ok)
 	return fp;
 }
 
-#ifdef WIN32
-static int select_win32(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, const struct timeval * timeout);
-#define select		select_win32
-#endif
-
 int
 wait_for_socket(int sock, struct timeval *timeout)
 {
@@ -1051,7 +1027,6 @@ wait_for_sockets(int nfds, fd_set *fds, struct timeval *timeout)
 	}
 }
 
-#ifndef WIN32
 static void
 handle_interrupt(SIGNAL_ARGS)
 {
@@ -1067,101 +1042,6 @@ init_cancel_handler(void)
 	pqsignal(SIGTERM, handle_interrupt);
 	pqsignal(SIGPIPE, handle_interrupt);
 }
-#else							/* WIN32 */
-
-/*
- * Console control handler for Win32. Note that the control handler will
- * execute on a *different thread* than the main one, so we need to do
- * proper locking around those structures.
- */
-static BOOL WINAPI
-consoleHandler(DWORD dwCtrlType)
-{
-	if (dwCtrlType == CTRL_C_EVENT ||
-		dwCtrlType == CTRL_BREAK_EVENT)
-	{
-		EnterCriticalSection(&cancelConnLock);
-		on_interrupt();
-		LeaveCriticalSection(&cancelConnLock);
-		return TRUE;
-	}
-	else
-		/* Return FALSE for any signals not being handled */
-		return FALSE;
-}
-
-static void
-init_cancel_handler(void)
-{
-	InitializeCriticalSection(&cancelConnLock);
-
-	SetConsoleCtrlHandler(consoleHandler, TRUE);
-}
-
-int
-sleep(unsigned int seconds)
-{
-	Sleep(seconds * 1000);
-	return 0;
-}
-
-int
-usleep(unsigned int usec)
-{
-	Sleep((usec + 999) / 1000);	/* rounded up */
-	return 0;
-}
-
-#undef select
-static int
-select_win32(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, const struct timeval * timeout)
-{
-	struct timeval	remain;
-
-	if (timeout != NULL)
-		remain = *timeout;
-	else
-	{
-		remain.tv_usec = 0;
-		remain.tv_sec = LONG_MAX;	/* infinite */
-	}
-
-	/* sleep only one second because Ctrl+C doesn't interrupt select. */
-	while (remain.tv_sec > 0 || remain.tv_usec > 0)
-	{
-		int				ret;
-		struct timeval	onesec;
-
-		if (remain.tv_sec > 0)
-		{
-			onesec.tv_sec = 1;
-			onesec.tv_usec = 0;
-			remain.tv_sec -= 1;
-		}
-		else
-		{
-			onesec.tv_sec = 0;
-			onesec.tv_usec = remain.tv_usec;
-			remain.tv_usec = 0;
-		}
-
-		ret = select(nfds, readfds, writefds, exceptfds, &onesec);
-		if (ret != 0)
-		{
-			/* succeeded or error */
-			return ret;
-		}
-		else if (interrupted)
-		{
-			errno = EINTR;
-			return 0;
-		}
-	}
-
-	return 0;	/* timeout */
-}
-
-#endif   /* WIN32 */
 
 void
 discard_response(PGconn *conn)
@@ -1311,62 +1191,4 @@ pgut_rmtree(const char *path, bool rmtopdir, bool strict)
 	pgut_pgfnames_cleanup(filenames);
 
 	return result;
-}
-
-/* cross-platform setenv */
-void
-pgut_setenv(const char *key, const char *val)
-{
-#ifdef WIN32
-	char  *envstr = NULL;
-	envstr = psprintf("%s=%s", key, val);
-	putenv(envstr);
-#else
-	setenv(key, val, 1);
-#endif
-}
-
-/* stolen from unsetenv.c */
-void
-pgut_unsetenv(const char *key)
-{
-#ifdef WIN32
-	char  *envstr = NULL;
-
-    if (getenv(key) == NULL)
-            return;                                 /* no work */
-
-    /*
-     * The technique embodied here works if libc follows the Single Unix Spec
-     * and actually uses the storage passed to putenv() to hold the environ
-     * entry.  When we clobber the entry in the second step we are ensuring
-     * that we zap the actual environ member.  However, there are some libc
-     * implementations (notably recent BSDs) that do not obey SUS but copy the
-     * presented string.  This method fails on such platforms.  Hopefully all
-     * such platforms have unsetenv() and thus won't be using this hack. See:
-     * http://www.greenend.org.uk/rjk/2008/putenv.html
-     *
-     * Note that repeatedly setting and unsetting a var using this code will
-     * leak memory.
-     */
-
-    envstr = (char *) pgut_malloc(strlen(key) + 2);
-    if (!envstr)                            /* not much we can do if no memory */
-            return;
-
-    /* Override the existing setting by forcibly defining the var */
-    sprintf(envstr, "%s=", key);
-    putenv(envstr);
-
-    /* Now we can clobber the variable definition this way: */
-    strcpy(envstr, "=");
-
-    /*
-     * This last putenv cleans up if we have multiple zero-length names as a
-     * result of unsetting multiple things.
-     */
-    putenv(envstr);
-#else
-	unsetenv(key);
-#endif
 }
