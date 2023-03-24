@@ -503,10 +503,11 @@ merge_chain(InstanceState *instanceState,
 		if (parse_program_version(backup->program_version) >
 			parse_program_version(PROGRAM_VERSION))
 		{
-			elog(ERROR, "Backup %s has been produced by pg_probackup version %s, "
+			elog(ERROR, "Backup %s has been produced by %s version %s, "
 						"but current program version is %s. Forward compatibility "
 						"is not supported.",
 				backup_id_of(backup),
+				PROGRAM_NAME,
 				backup->program_version,
 				PROGRAM_VERSION);
 		}

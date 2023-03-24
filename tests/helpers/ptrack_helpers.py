@@ -310,7 +310,7 @@ class ProbackupTest(object):
 
         if not self.probackup_path:
             probackup_path_tmp = os.path.join(
-                testgres.get_pg_config()['BINDIR'], 'pg_probackup')
+                testgres.get_pg_config()['BINDIR'], 'pg_backup')
 
             if os.path.isfile(probackup_path_tmp):
                 if not os.access(probackup_path_tmp, os.X_OK):
@@ -321,7 +321,7 @@ class ProbackupTest(object):
 
         if not self.probackup_path:
             probackup_path_tmp = os.path.abspath(os.path.join(
-                self.dir_path, '../pg_probackup'))
+                self.dir_path, '../pg_backup'))
 
             if os.path.isfile(probackup_path_tmp):
                 if not os.access(probackup_path_tmp, os.X_OK):
@@ -331,7 +331,7 @@ class ProbackupTest(object):
                     self.probackup_path = probackup_path_tmp
 
         if not self.probackup_path:
-            print('pg_probackup binary is not found')
+            print('pg_backup binary is not found')
             exit(1)
 
         if os.name == 'posix':
@@ -397,7 +397,7 @@ class ProbackupTest(object):
                 if self.pg_config_version >= self.version_to_num('11.0'):
                     self.ptrack = True
 
-        os.environ["PGAPPNAME"] = "pg_probackup"
+        os.environ["PGAPPNAME"] = "pg_backup"
 
     def is_test_result_ok(test_case):
         # sources of solution:

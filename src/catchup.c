@@ -73,10 +73,10 @@ catchup_init_state(PGNodeInfo	*source_node_info, const char *source_pgdata, cons
 	current.tli = get_current_timeline_from_control(source_pgdata, FIO_DB_HOST, false);
 #endif
 
-	elog(INFO, "Catchup start, pg_probackup version: %s, "
+	elog(INFO, "Catchup start, %s version: %s, "
 			"PostgreSQL version: %s, "
 			"remote: %s, source-pgdata: %s, destination-pgdata: %s",
-			PROGRAM_VERSION, source_node_info->server_version_str,
+			PROGRAM_NAME, PROGRAM_VERSION, source_node_info->server_version_str,
 			IsSshProtocol()  ? "true" : "false",
 			source_pgdata, dest_pgdata);
 
@@ -613,7 +613,7 @@ filter_filelist(parray *filelist, const char *pgdata,
 }
 
 /*
- * Entry point of pg_probackup CATCHUP subcommand.
+ * Entry point of pg_backup CATCHUP subcommand.
  * exclude_*_paths_list are parray's of char *
  */
 int
@@ -691,8 +691,8 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 		char		label[1024];
 		/* notify start of backup to PostgreSQL server */
 		time2iso(label, lengthof(label), current.start_time, false);
-		strncat(label, " with pg_probackup", lengthof(label) -
-				strlen(" with pg_probackup"));
+		strncat(label, " with pg_backup", lengthof(label) -
+				strlen(" with pg_backup"));
 
 		/* Call pg_start_backup function in PostgreSQL connect */
 		pg_start_backup(label, smooth_checkpoint, &current, &source_node_info, source_conn);

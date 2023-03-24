@@ -1109,7 +1109,7 @@ class CatchupTest(ProbackupTest, unittest.TestCase):
 #
 # 1. if "--slot" is used - try to use already existing slot with given name
 # 2. if "--slot" and "--perm-slot" used - try to create permanent slot and use it.
-# 3. If "--perm-slot " flag is used without "--slot" option - use generic slot name like "pg_probackup_perm_slot"
+# 3. If "--perm-slot " flag is used without "--slot" option - use generic slot name like "pg_backup_perm_slot"
 # 4. If "--perm-slot " flag is used and permanent slot already exists - fail with error.
 # 5. "--perm-slot" and "--temp-slot" flags cannot be used together.
 #########################################
@@ -1208,7 +1208,7 @@ class CatchupTest(ProbackupTest, unittest.TestCase):
             "WHERE slot_name NOT LIKE '%existentslot%' "
             "AND slot_type = 'physical'"
             ).decode('utf-8').rstrip()
-        self.assertEqual(slot_name, 'pg_probackup_perm_slot', 'Slot name mismatch')
+        self.assertEqual(slot_name, 'pg_backup_perm_slot', 'Slot name mismatch')
 
         # 5. --perm-slot --temp-slot (PG>=10)
         if self.get_version(src_pg) >= self.version_to_num('10.0'):
