@@ -3502,7 +3502,7 @@ class RestoreTest(ProbackupTest, unittest.TestCase):
         """
         https://github.com/postgrespro/pg_probackup/issues/249
 
-        pg_probackup version must be 12 or greater
+        pg_backup version must be 12 or greater
         """
         if not self.probackup_old_path:
             self.skipTest("You must specify PGPROBACKUPBIN_OLD"
@@ -3572,7 +3572,7 @@ class RestoreTest(ProbackupTest, unittest.TestCase):
         """
         https://github.com/postgrespro/pg_probackup/issues/249
 
-        pg_probackup version must be 12 or greater
+        pg_backup version must be 12 or greater
         """
 
         if self.pg_config_version < self.version_to_num('12.0'):
@@ -3613,7 +3613,7 @@ class RestoreTest(ProbackupTest, unittest.TestCase):
         """
         https://github.com/postgrespro/pg_probackup/issues/249
 
-        pg_probackup version must be 12 or greater
+        pg_backup version must be 12 or greater
         """
 
         if self.pg_config_version < self.version_to_num('12.0'):
