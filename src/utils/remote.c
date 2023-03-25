@@ -87,6 +87,9 @@ bool launch_agent(void)
 	int infd[2];
 	int errfd[2];
 	int agent_version;
+	//TODO REVIEW XXX review buf_size
+	int payload_buf_size = 1024 * 8;
+	char payload_buf[payload_buf_size];
 
 	ssh_argc = 0;
 	ssh_argv[ssh_argc++] = instance_config.remote.proto;
@@ -176,13 +179,10 @@ bool launch_agent(void)
 		fio_redirect(infd[0], outfd[1], errfd[0]); /* write to stdout */
 	}
 
-
-	/* Make sure that remote agent has the same version, fork and other features to be binary compatible */
-	{
-		char payload_buf[1024];
-		fio_get_agent_version(&agent_version, payload_buf, sizeof payload_buf);
-		check_remote_agent_compatibility(agent_version, payload_buf, sizeof payload_buf);
-	}
+	/* Make sure that remote agent has the same version, fork and other features to be binary compatible
+	 */
+	fio_get_agent_version(&agent_version, payload_buf, payload_buf_size);
+	check_remote_agent_compatibility(agent_version, payload_buf, payload_buf_size);
 
 	return true;
 }
@@ -206,7 +206,7 @@ size_t prepare_compatibility_str(char* compatibility_buf, size_t compatibility_b
 	char* compatibility_params[] = {
 		COMPATIBILITY_VAL_STR(PG_MAJORVERSION),
 #ifdef PGPRO_EDN
-		//TODO REVIEW can use edition.h/extract_pgpro_edition() or similar
+		//TODO REVIEW can use edition.h/extract_pgpro_edition()
 		COMPATIBILITY_VAL_STR(PGPRO_EDN),
 #endif
 		//TODO REVIEW remove? no difference between 32/64 in global/pg_control.

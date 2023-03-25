@@ -196,6 +196,7 @@ fio_write_all(int fd, void const* buf, size_t size)
 	return offs;
 }
 
+//TODO REVIEW XXX move to remote.c????
 /* Get version of remote agent */
 void
 fio_get_agent_version(int* protocol, char* payload_buf, size_t payload_buf_size)
@@ -3239,6 +3240,7 @@ fio_check_postmaster_impl(const char *pgdata, int out)
 }
 
 /* Execute commands at remote host */
+//TODO REVIEW XXX move to remote.c?
 void
 fio_communicate(int in, int out)
 {
