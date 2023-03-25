@@ -1868,11 +1868,7 @@ class MergeTest(ProbackupTest, unittest.TestCase):
                 '\n Unexpected Error Message: {0}\n CMD: {1}'.format(
                     repr(e.message), self.cmd))
 
-    # Skipped, because backups from the future are invalid.
-    # This cause a "ERROR: Can't assign backup_id, there is already a backup in future"
-    # now (PBCKP-259). We can conduct such a test again when we
-    # untie 'backup_id' from 'start_time'
-    @unittest.skip("skip")
+    # @unittest.skip("skip")
     def test_merge_backup_from_future(self):
         """
         take FULL backup, table PAGE backup from future,

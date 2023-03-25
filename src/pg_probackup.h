@@ -416,10 +416,7 @@ struct pgBackup
 {
 	BackupMode		backup_mode; /* Mode - one of BACKUP_MODE_xxx above*/
 	time_t			backup_id;	 /* Identifier of the backup.
-								  * By default it's the same as start_time
-								  * but can be increased if same backup_id
-								  * already exists. It can be also set by
-								  * start_time parameter */
+								  * Currently it's the same as start_time */
 	BackupStatus	status;		/* Status - one of BACKUP_STATUS_xxx above*/
 	TimeLineID		tli; 		/* timeline of start and stop backup lsns */
 	XLogRecPtr		start_lsn;	/* backup's starting transaction log location */
@@ -959,7 +956,7 @@ extern void write_backup_filelist(pgBackup *backup, parray *files,
 								  const char *root, parray *external_list, bool sync);
 
 
-extern void pgBackupInitDir(pgBackup *backup, const char *backup_instance_path);
+extern void pgBackupCreateDir(pgBackup *backup, InstanceState *instanceState, time_t start_time);
 extern void pgNodeInit(PGNodeInfo *node);
 extern void pgBackupInit(pgBackup *backup);
 extern void pgBackupFree(void *backup);

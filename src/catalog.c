@@ -23,7 +23,7 @@ static pgBackup* get_closest_backup(timelineInfo *tlinfo);
 static pgBackup* get_oldest_backup(timelineInfo *tlinfo);
 static const char *backupModes[] = {"", "PAGE", "PTRACK", "DELTA", "FULL"};
 static pgBackup *readBackupControlFile(const char *path);
-static int create_backup_dir(pgBackup *backup, const char *backup_instance_path);
+static void create_backup_dir(pgBackup *backup, const char *backup_instance_path);
 
 static bool backup_lock_exit_hook_registered = false;
 static parray *locks = NULL;
@@ -979,7 +979,6 @@ catalog_get_backup_list(InstanceState *instanceState, time_t requested_backup_id
 		}
 		else if (strcmp(backup_id_of(backup), data_ent->d_name) != 0)
 		{
-			/* TODO there is no such guarantees */
 			elog(WARNING, "backup ID in control file \"%s\" doesn't match name of the backup folder \"%s\"",
 				 backup_id_of(backup), backup_conf_path);
 		}
@@ -1439,33 +1438,21 @@ get_multi_timeline_parent(parray *backup_list, parray *tli_list,
 	return NULL;
 }
 
-/*
- * Create backup directory in $BACKUP_PATH
- * (with proposed backup->backup_id)
- * and initialize this directory.
- * If creation of directory fails, then
- * backup_id will be cleared (set to INVALID_BACKUP_ID).
- * It is possible to get diffrent values in
+/* Create backup directory in $BACKUP_PATH
+ * Note, that backup_id attribute is updated,
+ * so it is possible to get diffrent values in
  * pgBackup.start_time and pgBackup.backup_id.
  * It may be ok or maybe not, so it's up to the caller
  * to fix it or let it be.
  */
 void
-pgBackupInitDir(pgBackup *backup, const char *backup_instance_path)
+pgBackupCreateDir(pgBackup *backup, InstanceState *instanceState, time_t start_time)
 {
-	int	i;
-	char	temp[MAXPGPATH];
-	parray *subdirs;
+	int		i;
+	parray *subdirs = parray_new();
+	parray * backups;
+	pgBackup *target_backup;
 
-	/* Try to create backup directory at first */
-	if (create_backup_dir(backup, backup_instance_path) != 0)
-	{
-		/* Clear backup_id as indication of error */
-		reset_backup_id(backup);
-		return;
-	}
-
-	subdirs = parray_new();
 	parray_append(subdirs, pg_strdup(DATABASE_DIR));
 
 	/* Add external dirs containers */
@@ -1477,12 +1464,37 @@ pgBackupInitDir(pgBackup *backup, const char *backup_instance_path)
 													 false);
 		for (i = 0; i < parray_num(external_list); i++)
 		{
+			char		temp[MAXPGPATH];
 			/* Numeration of externaldirs starts with 1 */
 			makeExternalDirPathByNum(temp, EXTERNAL_DIR, i+1);
 			parray_append(subdirs, pg_strdup(temp));
 		}
 		free_dir_list(external_list);
 	}
+
+	/* Get list of all backups*/
+	backups = catalog_get_backup_list(instanceState, INVALID_BACKUP_ID);
+	if (parray_num(backups) > 0)
+	{
+		target_backup = (pgBackup *) parray_get(backups, 0);
+		if (start_time > target_backup->backup_id)
+		{
+			backup->backup_id = start_time;
+			create_backup_dir(backup, instanceState->instance_backup_subdir_path);
+		}
+		else
+		{
+			elog(ERROR, "Cannot create directory for older backup");
+		}
+	}
+	else
+	{
+		backup->backup_id = start_time;
+		create_backup_dir(backup, instanceState->instance_backup_subdir_path);
+	}
+
+	if (backup->backup_id == 0)
+		elog(ERROR, "Cannot create backup directory: %s", strerror(errno));
 
 	backup->database_dir = pgut_malloc(MAXPGPATH);
 	join_path_components(backup->database_dir, backup->root_dir, DATABASE_DIR);
@@ -1493,8 +1505,10 @@ pgBackupInitDir(pgBackup *backup, const char *backup_instance_path)
 	/* create directories for actual backup files */
 	for (i = 0; i < parray_num(subdirs); i++)
 	{
-		join_path_components(temp, backup->root_dir, parray_get(subdirs, i));
-		fio_mkdir(FIO_BACKUP_HOST, temp, DIR_PERMISSION, false);
+		char	path[MAXPGPATH];
+
+		join_path_components(path, backup->root_dir, parray_get(subdirs, i));
+		fio_mkdir(FIO_BACKUP_HOST, path, DIR_PERMISSION, false);
 	}
 
 	free_dir_list(subdirs);
@@ -1503,24 +1517,31 @@ pgBackupInitDir(pgBackup *backup, const char *backup_instance_path)
 /*
  * Create root directory for backup,
  * update pgBackup.root_dir if directory creation was a success
- * Return values (same as dir_create_dir()):
- *  0 - ok
- * -1 - error (warning message already emitted)
  */
-int
+void
 create_backup_dir(pgBackup *backup, const char *backup_instance_path)
 {
-	int    rc;
-	char   path[MAXPGPATH];
+	int     attempts = 10;
 
-	join_path_components(path, backup_instance_path, backup_id_of(backup));
-	rc = fio_mkdir(FIO_BACKUP_HOST, path, DIR_PERMISSION, true);
+	while (attempts--)
+	{
+		int    rc;
+		char   path[MAXPGPATH];
 
-	if (rc == 0)
-		backup->root_dir = pgut_strdup(path);
-	else
-		elog(WARNING, "Cannot create directory \"%s\": %s", path, strerror(errno));
-	return rc;
+		join_path_components(path, backup_instance_path, base36enc(backup->backup_id));
+		rc = fio_mkdir(FIO_BACKUP_HOST, path, DIR_PERMISSION, true);
+
+		if (rc == 0)
+		{
+			backup->root_dir = pgut_strdup(path);
+			return;
+		}
+		else
+		{
+			elog(WARNING, "Cannot create directory \"%s\": %s", path, strerror(errno));
+			sleep(1);
+		}
+	}
 }
 
 /*
