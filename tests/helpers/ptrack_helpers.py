@@ -113,26 +113,6 @@ def is_nls_enabled():
     return b'enable-nls' in p.communicate()[0]
 
 
-def base36enc(number):
-    """Converts an integer to a base36 string."""
-    alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-    base36 = ''
-    sign = ''
-
-    if number < 0:
-        sign = '-'
-        number = -number
-
-    if 0 <= number < len(alphabet):
-        return sign + alphabet[number]
-
-    while number != 0:
-        number, i = divmod(number, len(alphabet))
-        base36 = alphabet[i] + base36
-
-    return sign + base36
-
-
 class ProbackupException(Exception):
     def __init__(self, message, cmd):
         self.message = message
