@@ -46,7 +46,7 @@ cd postgres # Go to postgres dir
 #fi
 CFLAGS="-Og" ./configure --prefix=$PG_BIN_DIR \
     --enable-debug --enable-cassert --enable-depend \
-    --without-readline
+    --without-readline --enable-nls --with-python
 make -s -j$(nproc) install
 make -s -j$(nproc) -C contrib/ install
 
