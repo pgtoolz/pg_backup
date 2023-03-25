@@ -212,7 +212,6 @@ static ConfigOption cmd_options[] =
 	{ 'b', 184, "merge-expired",	&merge_expired,		SOURCE_CMD_STRICT },
 	{ 'b', 185, "dry-run",			&dry_run,			SOURCE_CMD_STRICT },
 	{ 's', 238, "note",				&backup_note,		SOURCE_CMD_STRICT },
-	{ 'U', 241, "start-time",		&start_time,		SOURCE_CMD_STRICT },
 	/* catchup options */
 	{ 's', 239, "source-pgdata",		&catchup_source_pgdata,	SOURCE_CMD_STRICT },
 	{ 's', 240, "destination-pgdata",	&catchup_destination_pgdata,	SOURCE_CMD_STRICT },
@@ -967,11 +966,6 @@ main(int argc, char *argv[])
 		case BACKUP_CMD:
 			{
 				current.stream = stream_wal;
-				if (start_time != INVALID_BACKUP_ID)
-					elog(WARNING, "Please do not use the --start-time option to start backup. "
-							"This is a service option required to work with other extensions. "
-							"We do not guarantee future support for this flag.");
-
 
 				/* sanity */
 				if (current.backup_mode == BACKUP_MODE_INVALID)
@@ -979,7 +973,7 @@ main(int argc, char *argv[])
 						 "(-b, --backup-mode)");
 
 				return do_backup(instanceState, set_backup_params,
-								 no_validate, no_sync, backup_logs, start_time);
+								 no_validate, no_sync, backup_logs);
 			}
 		case CATCHUP_CMD:
 			return do_catchup(catchup_source_pgdata, catchup_destination_pgdata, num_threads, !no_sync,
