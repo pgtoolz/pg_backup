@@ -965,9 +965,6 @@ main(int argc, char *argv[])
 			return do_init(catalogState);
 		case BACKUP_CMD:
 			{
-				time_t start_time;
-				time(&start_time);
-
 				current.stream = stream_wal;
 
 				/* sanity */
@@ -976,7 +973,7 @@ main(int argc, char *argv[])
 						 "(-b, --backup-mode)");
 
 				return do_backup(instanceState, set_backup_params,
-								 no_validate, no_sync, backup_logs, start_time);
+								 no_validate, no_sync, backup_logs);
 			}
 		case CATCHUP_CMD:
 			return do_catchup(catchup_source_pgdata, catchup_destination_pgdata, num_threads, !no_sync,
