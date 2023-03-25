@@ -341,7 +341,7 @@ class BackupTest(ProbackupTest, unittest.TestCase):
         self.set_archiving(backup_dir, 'node', node)
         node.slow_start()
 
-        if self.ptrack and node.major_version > 11:
+        if self.ptrack:
             node.safe_psql(
                 "postgres",
                 "create extension ptrack")
@@ -483,7 +483,7 @@ class BackupTest(ProbackupTest, unittest.TestCase):
         self.set_archiving(backup_dir, 'node', node)
         node.slow_start()
 
-        if self.ptrack and node.major_version > 11:
+        if self.ptrack:
             node.safe_psql(
                 "postgres",
                 "create extension ptrack")
@@ -620,7 +620,7 @@ class BackupTest(ProbackupTest, unittest.TestCase):
         self.set_archiving(backup_dir, 'node', node)
         node.slow_start()
 
-        if self.ptrack and node.major_version > 11:
+        if self.ptrack:
             node.safe_psql(
                 "postgres",
                 "create extension ptrack")

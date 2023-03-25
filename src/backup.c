@@ -693,6 +693,10 @@ do_backup(InstanceState *instanceState, pgSetBackupParams *set_backup_params,
 	PGNodeInfo	nodeInfo;
 	char		pretty_bytes[20];
 
+	if (!instance_config.pgdata)
+		elog(ERROR, "required parameter not specified: PGDATA "
+						 "(-D, --pgdata)");
+
 	/* Initialize PGInfonode */
 	pgNodeInit(&nodeInfo);
 
@@ -703,10 +707,6 @@ do_backup(InstanceState *instanceState, pgSetBackupParams *set_backup_params,
 
 	/* Create backup directory and BACKUP_CONTROL_FILE */
 	pgBackupCreateDir(&current, instanceState->instance_backup_subdir_path);
-
-	if (!instance_config.pgdata)
-		elog(ERROR, "required parameter not specified: PGDATA "
-						 "(-D, --pgdata)");
 
 	/* Update backup status and other metainfo. */
 	current.status = BACKUP_STATUS_RUNNING;

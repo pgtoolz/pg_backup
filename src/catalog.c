@@ -979,6 +979,7 @@ catalog_get_backup_list(InstanceState *instanceState, time_t requested_backup_id
 		}
 		else if (strcmp(backup_id_of(backup), data_ent->d_name) != 0)
 		{
+			/* TODO there is no such guarantees */
 			elog(WARNING, "backup ID in control file \"%s\" doesn't match name of the backup folder \"%s\"",
 				 backup_id_of(backup), backup_conf_path);
 		}
@@ -1440,7 +1441,7 @@ get_multi_timeline_parent(parray *backup_list, parray *tli_list,
 
 /* Create backup directory in $BACKUP_PATH
  * Note, that backup_id attribute is updated,
- * so it is possible to get diffrent values in
+ * so it is possible to get different values in
  * pgBackup.start_time and pgBackup.backup_id.
  * It may be ok or maybe not, so it's up to the caller
  * to fix it or let it be.
@@ -1448,9 +1449,11 @@ get_multi_timeline_parent(parray *backup_list, parray *tli_list,
 void
 pgBackupCreateDir(pgBackup *backup, const char *backup_instance_path)
 {
-	int		i;
-	parray *subdirs = parray_new();
+	int	i;
+	char	temp[MAXPGPATH];
+	parray *subdirs;
 
+	subdirs = parray_new();
 	parray_append(subdirs, pg_strdup(DATABASE_DIR));
 
 	/* Add external dirs containers */
@@ -1462,7 +1465,6 @@ pgBackupCreateDir(pgBackup *backup, const char *backup_instance_path)
 													 false);
 		for (i = 0; i < parray_num(external_list); i++)
 		{
-			char		temp[MAXPGPATH];
 			/* Numeration of externaldirs starts with 1 */
 			makeExternalDirPathByNum(temp, EXTERNAL_DIR, i+1);
 			parray_append(subdirs, pg_strdup(temp));
@@ -1472,7 +1474,7 @@ pgBackupCreateDir(pgBackup *backup, const char *backup_instance_path)
 
 	backup->backup_id = create_backup_dir(backup, backup_instance_path);
 
-	if (backup->backup_id == 0)
+	if (backup->backup_id == INVALID_BACKUP_ID)
 		elog(ERROR, "Cannot create backup directory: %s", strerror(errno));
 
 	backup->database_dir = pgut_malloc(MAXPGPATH);
@@ -1484,10 +1486,8 @@ pgBackupCreateDir(pgBackup *backup, const char *backup_instance_path)
 	/* create directories for actual backup files */
 	for (i = 0; i < parray_num(subdirs); i++)
 	{
-		char	path[MAXPGPATH];
-
-		join_path_components(path, backup->root_dir, parray_get(subdirs, i));
-		fio_mkdir(FIO_BACKUP_HOST, path, DIR_PERMISSION, false);
+		join_path_components(temp, backup->root_dir, parray_get(subdirs, i));
+		fio_mkdir(FIO_BACKUP_HOST, temp, DIR_PERMISSION, false);
 	}
 
 	free_dir_list(subdirs);

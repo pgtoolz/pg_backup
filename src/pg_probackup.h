@@ -416,7 +416,9 @@ struct pgBackup
 {
 	BackupMode		backup_mode; /* Mode - one of BACKUP_MODE_xxx above*/
 	time_t			backup_id;	 /* Identifier of the backup.
-								  * Currently it's the same as start_time */
+								  * By default it's the same as start_time
+								  * but can be increased if same backup_id
+								  * already exists. */
 	BackupStatus	status;		/* Status - one of BACKUP_STATUS_xxx above*/
 	TimeLineID		tli; 		/* timeline of start and stop backup lsns */
 	XLogRecPtr		start_lsn;	/* backup's starting transaction log location */
