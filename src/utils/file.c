@@ -1333,6 +1333,8 @@ fio_get_crc32_ex(fio_location location, const char *file_path,
 {
 	if (decompress && truncated)
 		elog(ERROR, "Could not calculate CRC for compressed truncated file");
+	if (missing_ok && truncated)
+		elog(ERROR, "CRC calculation for missing truncated file is forbidden");
 
 	if (fio_is_remote(location))
 	{
@@ -1362,7 +1364,7 @@ fio_get_crc32_ex(fio_location location, const char *file_path,
 		if (decompress)
 			return pgFileGetCRCgz(file_path, true, missing_ok);
 		else if (truncated)
-			return pgFileGetCRCTruncated(file_path, true, missing_ok);
+			return pgFileGetCRCTruncated(file_path, true);
 		else
 			return pgFileGetCRC(file_path, true, missing_ok);
 	}
@@ -1376,10 +1378,9 @@ fio_get_crc32(fio_location location, const char *file_path,
 }
 
 pg_crc32
-fio_get_crc32_truncated(fio_location location, const char *file_path,
-						bool missing_ok)
+fio_get_crc32_truncated(fio_location location, const char *file_path)
 {
-	return fio_get_crc32_ex(location, file_path, false, missing_ok, true);
+	return fio_get_crc32_ex(location, file_path, false, false, true);
 }
 
 /*
@@ -3045,7 +3046,6 @@ fio_send_file_impl(int out, const char* path)
 	fio_header hdr;
 	char      *buf = pgut_malloc(CHUNK_SIZE);
 	size_t	   read_len = 0;
-	int64_t	   read_size = 0;
 	char      *errormsg = NULL;
 
 	/* open source file for read */
@@ -3109,19 +3109,7 @@ fio_send_file_impl(int out, const char* path)
 		if (read_len > 0)
 		{
 			/* send chunk */
-			int64_t non_zero_len = find_zero_tail(buf, read_len);
-			/*
-			 * It is dirty trick to silence warnings in CFS GC process:
-			 * backup at least cfs header size bytes.
-			 */
-			if (read_size + non_zero_len < PAGE_ZEROSEARCH_FINE_GRANULARITY &&
-				read_size + read_len > 0)
-			{
-				non_zero_len = Min(PAGE_ZEROSEARCH_FINE_GRANULARITY,
-								   read_size + read_len);
-				non_zero_len -= read_size;
-			}
-
+			size_t non_zero_len = find_zero_tail(buf, read_len);
 			if (non_zero_len > 0)
 			{
 				hdr.cop = FIO_PAGE;
@@ -3137,8 +3125,6 @@ fio_send_file_impl(int out, const char* path)
 				hdr.arg = read_len - non_zero_len;
 				IO_CHECK(fio_write_all(out, &hdr, sizeof(hdr)), sizeof(hdr));
 			}
-
-			read_size += read_len;
 		}
 
 		if (feof(fp))
@@ -3223,7 +3209,7 @@ pgFileGetCRC(const char *file_path, bool use_crc32c, bool missing_ok)
  * Read the local file to compute CRC for it extened to real_size.
  */
 pg_crc32
-pgFileGetCRCTruncated(const char *file_path, bool use_crc32c, bool missing_ok)
+pgFileGetCRCTruncated(const char *file_path, bool use_crc32c)
 {
 	FILE	   *fp;
 	char	   *buf;
@@ -3237,15 +3223,6 @@ pgFileGetCRCTruncated(const char *file_path, bool use_crc32c, bool missing_ok)
 	fp = fopen(file_path, PG_BINARY_R);
 	if (fp == NULL)
 	{
-		if (errno == ENOENT)
-		{
-			if (missing_ok)
-			{
-				FIN_FILE_CRC32(use_crc32c, st.crc);
-				return st.crc;
-			}
-		}
-
 		elog(ERROR, "Cannot open file \"%s\": %s",
 			 file_path, strerror(errno));
 	}
@@ -3266,14 +3243,6 @@ pgFileGetCRCTruncated(const char *file_path, bool use_crc32c, bool missing_ok)
 			elog(ERROR, "Cannot read \"%s\": %s", file_path, strerror(errno));
 
 		non_zero_len = find_zero_tail(buf, len);
-		/* same trick as in fio_send_file */
-		if (st.read_size + non_zero_len < PAGE_ZEROSEARCH_FINE_GRANULARITY &&
-			st.read_size + len > 0)
-		{
-			non_zero_len = Min(PAGE_ZEROSEARCH_FINE_GRANULARITY,
-							   st.read_size + len);
-			non_zero_len -= st.read_size;
-		}
 		if (non_zero_len)
 		{
 			fio_send_file_crc(&st, buf, non_zero_len);
@@ -3935,12 +3904,12 @@ fio_communicate(int in, int out)
 			break;
 		  case FIO_GET_CRC32:
 			Assert((hdr.arg & GET_CRC32_TRUNCATED) == 0 ||
-				   (hdr.arg & (GET_CRC32_TRUNCATED|GET_CRC32_DECOMPRESS)) == GET_CRC32_TRUNCATED);
+				   (hdr.arg & GET_CRC32_TRUNCATED) == GET_CRC32_TRUNCATED);
 			/* calculate crc32 for a file */
 			if ((hdr.arg & GET_CRC32_DECOMPRESS))
 				crc = pgFileGetCRCgz(buf, true, (hdr.arg & GET_CRC32_MISSING_OK) != 0);
 			else if ((hdr.arg & GET_CRC32_TRUNCATED))
-				crc = pgFileGetCRCTruncated(buf, true, (hdr.arg & GET_CRC32_MISSING_OK) != 0);
+				crc = pgFileGetCRCTruncated(buf, true);
 			else
 				crc = pgFileGetCRC(buf, true, (hdr.arg & GET_CRC32_MISSING_OK) != 0);
 			IO_CHECK(fio_write_all(out, &crc, sizeof(crc)), sizeof(crc));
