@@ -23,7 +23,7 @@ sudo apt-get purge -y $(dpkg -l | awk '{print$2}' | grep postgres) libpq5 libpq-
 
 # install deps
 #apt-get install -q -y curl ca-certificates gnupg lsb-release build-essential gcc make zlib1g-dev python3 python3-pip python3-setuptools
-sudo apt-get install -q -y gnupg lsb-release build-essential gcc make zlib1g-dev python3 python3-pip python3-setuptools
+sudo apt-get install -q -y gnupg lsb-release build-essential gcc make gettext zlib1g-dev python3 python3-pip python3-setuptools
 sudo pip3 install testgres
 
 # Clone Postgres
