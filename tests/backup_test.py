@@ -2126,7 +2126,6 @@ class BackupTest(ProbackupTest, unittest.TestCase):
         if self.get_version(node) >= 150000:
             node.safe_psql(
                 'backupdb',
-                "BEGIN; "
                 "CREATE ROLE backup WITH LOGIN; "
                 "GRANT USAGE ON SCHEMA pg_catalog TO backup; "
                 "GRANT EXECUTE ON FUNCTION pg_catalog.current_setting(text) TO backup; "
