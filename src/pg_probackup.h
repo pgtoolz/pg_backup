@@ -1064,7 +1064,6 @@ extern pgFile *pgFileInit(const char *rel_path);
 extern void pgFileFree(void *file);
 
 extern pg_crc32 pgFileGetCRC(const char *file_path, bool use_crc32c, bool missing_ok);
-extern pg_crc32 pgFileGetCRCTruncated(const char *file_path, bool use_crc32c);
 extern pg_crc32 pgFileGetCRCgz(const char *file_path, bool use_crc32c, bool missing_ok);
 
 extern int pgFileMapComparePath(const void *f1, const void *f2);
@@ -1226,11 +1225,9 @@ extern int fio_copy_pages(const char *to_fullpath, const char *from_fullpath, pg
 	                      XLogRecPtr horizonLsn, int calg, int clevel, uint32 checksum_version,
 	                      bool use_pagemap, BlockNumber *err_blknum, char **errormsg);
 /* return codes for fio_send_pages */
-extern int fio_send_file_gz(const char *from_fullpath, FILE* out, char **errormsg);
-extern int fio_send_file(const char *from_fullpath, FILE* out, bool cut_zero_tail,
+extern int fio_send_file_gz(const char *from_fullpath, const char *to_fullpath, FILE* out, char **errormsg);
+extern int fio_send_file(const char *from_fullpath, const char *to_fullpath, FILE* out,
 														pgFile *file, char **errormsg);
-extern int fio_send_file_local(const char *from_fullpath, FILE* out, bool cut_zero_tail,
-						 pgFile *file, char **errormsg);
 
 extern bool pgut_rmtree(const char *path, bool rmtopdir, bool strict);
 

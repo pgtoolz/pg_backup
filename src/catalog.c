@@ -1078,7 +1078,7 @@ get_backup_filelist(pgBackup *backup, bool strict)
 		char		linked[MAXPGPATH];
 		char		compress_alg_string[MAXPGPATH];
 		int64		write_size,
-					uncompressed_size,
+					full_size,
 					mode,		/* bit length of mode_t depends on platforms */
 					is_datafile,
 					is_cfs,
@@ -1097,6 +1097,8 @@ get_backup_filelist(pgBackup *backup, bool strict)
 
 		get_control_value_str(buf, "path", path, sizeof(path),true);
 		get_control_value_int64(buf, "size", &write_size, true);
+		if (!get_control_value_int64(buf, "full_size", &full_size, false))
+			full_size = write_size;
 		get_control_value_int64(buf, "mode", &mode, true);
 		get_control_value_int64(buf, "is_datafile", &is_datafile, true);
 		get_control_value_int64(buf, "is_cfs", &is_cfs, false);
@@ -1107,6 +1109,7 @@ get_backup_filelist(pgBackup *backup, bool strict)
 
 		file = pgFileInit(path);
 		file->write_size = (int64) write_size;
+		file->uncompressed_size = full_size;
 		file->mode = (mode_t) mode;
 		file->is_datafile = is_datafile ? true : false;
 		file->is_cfs = is_cfs ? true : false;
@@ -1142,10 +1145,6 @@ get_backup_filelist(pgBackup *backup, bool strict)
 		if (get_control_value_int64(buf, "hdr_size", &hdr_size, false))
 			file->hdr_size = (int) hdr_size;
 
-		if (get_control_value_int64(buf, "full_size", &uncompressed_size, false))
-			file->uncompressed_size = uncompressed_size;
-		else
-			file->uncompressed_size = write_size;
 		if (!file->is_datafile || file->is_cfs)
 			file->size = file->uncompressed_size;
 
@@ -2583,11 +2582,6 @@ write_backup_filelist(pgBackup *backup, parray *files, const char *root,
 					deparse_compress_alg(file->compress_alg),
 					file->external_dir_num,
 					file->dbOid);
-
-		if (file->uncompressed_size != 0 &&
-				file->uncompressed_size != file->write_size)
-			len += sprintf(line+len, ",\"full_size\":\"" INT64_FORMAT "\"",
-						   file->uncompressed_size);
 
 		if (file->is_datafile)
 			len += sprintf(line+len, ",\"segno\":\"%d\"", file->segno);
