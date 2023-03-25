@@ -570,12 +570,6 @@ class PtrackTest(ProbackupTest, unittest.TestCase):
             "backupdb",
             "GRANT SELECT ON TABLE pg_catalog.pg_extension TO backup")
 
-        if ProbackupTest.enterprise:
-            node.safe_psql(
-                "backupdb",
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pgpro_version() TO backup; "
-                'GRANT EXECUTE ON FUNCTION pg_catalog.pgpro_edition() TO backup;')
-
         self.backup_node(
             backup_dir, 'node', node,
             datname='backupdb', options=['--stream', "-U", "backup"])

@@ -89,19 +89,6 @@ def dir_files(base_dir):
     out_list.sort()
     return out_list
 
-
-def is_enterprise():
-    # pg_config --help
-    cmd = [os.environ['PG_CONFIG'], '--help']
-
-    p = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE
-    )
-    return b'postgrespro.ru' in p.communicate()[0]
-
- 
 def is_nls_enabled():
     cmd = [os.environ['PG_CONFIG'], '--configure']
 
@@ -207,7 +194,6 @@ class PostgresNodeExtended(testgres.PostgresNode):
 
 class ProbackupTest(object):
     # Class attributes
-    enterprise = is_enterprise()
     enable_nls = is_nls_enabled()
 
     def __init__(self, *args, **kwargs):
@@ -555,7 +541,7 @@ class ProbackupTest(object):
                 'GRANT EXECUTE ON FUNCTION pg_catalog.txid_snapshot_xmax(txid_snapshot) TO {0}; '
                 'GRANT EXECUTE ON FUNCTION pg_catalog.pg_control_checkpoint() TO {0};'.format(role))
 
-    def create_tblspace_in_node(self, node, tblspc_name, tblspc_path=None, cfs=False):
+    def create_tblspace_in_node(self, node, tblspc_name, tblspc_path=None):
         res = node.execute(
             'postgres',
             'select exists'
@@ -573,8 +559,6 @@ class ProbackupTest(object):
                 node.base_dir, '{0}'.format(tblspc_name))
         cmd = "CREATE TABLESPACE {0} LOCATION '{1}'".format(
             tblspc_name, tblspc_path)
-        if cfs:
-            cmd += ' with (compression=true)'
 
         if not os.path.exists(tblspc_path):
             os.makedirs(tblspc_path)
@@ -1606,17 +1590,6 @@ class ProbackupTest(object):
         )
         return int(var[0][0])
 
-    def get_pgpro_edition(self, node):
-        if node.execute(
-            'postgres',
-            "select exists (select 1 from"
-            " pg_proc where proname = 'pgpro_edition')"
-        )[0][0]:
-            var = node.execute('postgres', 'select pgpro_edition()')
-            return str(var[0][0])
-        else:
-            return False
-
     def get_username(self):
         """ Returns current user name """
         return getpass.getuser()
@@ -1730,24 +1703,11 @@ class ProbackupTest(object):
                 cfile = ContentFile(file.isdigit())
                 directory_dict['files'][file_relpath] = cfile
                 with open(file_fullpath, 'rb') as f:
-                    # truncate cfm's content's zero tail
-                    if file_relpath.endswith('.cfm'):
-                        content = f.read()
-                        zero64 = b"\x00"*64
-                        l = len(content)
-                        while l > 64:
-                            s = (l - 1) & ~63
-                            if content[s:l] != zero64[:l-s]:
-                                break
-                            l = s
-                        content = content[:l]
-                        digest = hashlib.md5(content)
-                    else:
-                        digest = hashlib.md5()
-                        while True:
-                            b = f.read(64*1024)
-                            if not b: break
-                            digest.update(b)
+                    digest = hashlib.md5()
+                    while True:
+                        b = f.read(64*1024)
+                        if not b: break
+                        digest.update(b)
                     cfile.md5 = digest.hexdigest()
 
                 # crappy algorithm
