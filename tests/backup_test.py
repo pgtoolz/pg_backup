@@ -1,7 +1,7 @@
 import unittest
 import os
 import re
-from time import sleep, time
+from time import sleep
 from .helpers.ptrack_helpers import ProbackupTest, ProbackupException
 import shutil
 from distutils.dir_util import copy_tree
@@ -3191,4 +3191,3 @@ class BackupTest(ProbackupTest, unittest.TestCase):
                 e.message,
                 "\n Unexpected Error Message: {0}\n CMD: {1}".format(
                     repr(e.message), self.cmd))
-
