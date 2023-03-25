@@ -3119,13 +3119,6 @@ class RestoreTest(ProbackupTest, unittest.TestCase):
                 "GRANT USAGE ON SCHEMA ptrack TO backup; "
                 "CREATE EXTENSION ptrack WITH SCHEMA ptrack")
 
-        if ProbackupTest.enterprise:
-
-            node.safe_psql(
-                "backupdb",
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pgpro_version() TO backup; "
-                "GRANT EXECUTE ON FUNCTION pg_catalog.pgpro_edition() TO backup;")
-
         # FULL backup without database_map
         backup_id = self.backup_node(
             backup_dir, 'node', node, datname='backupdb',

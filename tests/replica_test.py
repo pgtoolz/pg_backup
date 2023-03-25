@@ -860,17 +860,15 @@ class ReplicaTest(ProbackupTest, unittest.TestCase):
                 "\n Output: {0} \n CMD: {1}".format(
                     repr(self.output), self.cmd))
         except ProbackupException as e:
-            # vanilla -- 0/4000060
-            # pgproee -- 0/4000078
-            self.assertRegex(
+            self.assertIn(
+                'LOG: Looking for LSN 0/4000060 in segment: 000000010000000000000004',
                 e.message,
-                r'LOG: Looking for LSN (0/4000060|0/4000078) in segment: 000000010000000000000004',
                 "\n Unexpected Error Message: {0}\n CMD: {1}".format(
                     repr(e.message), self.cmd))
 
-            self.assertRegex(
+            self.assertIn(
+                'INFO: Wait for LSN 0/4000060 in archived WAL segment',
                 e.message,
-                r'INFO: Wait for LSN (0/4000060|0/4000078) in archived WAL segment',
                 "\n Unexpected Error Message: {0}\n CMD: {1}".format(
                     repr(e.message), self.cmd))
 
