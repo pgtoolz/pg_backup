@@ -168,7 +168,7 @@ extern ssize_t fio_readlink(fio_location location, const char *path, char *value
 extern pid_t   fio_check_postmaster(fio_location location, const char *pgdata);
 
 extern void fio_list_dir(parray *files, const char *root, bool exclude, bool follow_symlink,
-						 bool add_root, bool backup_logs, bool skip_hidden, int external_dir_num);
+						 bool add_root, bool backup_logs, bool skip_hidden);
 
 struct PageState; /* defined in pg_probackup.h */
 extern struct PageState *fio_get_checksum_map(fio_location location, const char *fullpath, uint32 checksum_version,

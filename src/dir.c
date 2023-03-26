@@ -122,7 +122,7 @@ static char dir_check_file(pgFile *file, bool backup_logs);
 
 static void dir_list_file_internal(parray *files, pgFile *parent, const char *parent_dir,
 								   bool exclude, bool follow_symlink, bool backup_logs,
-								   bool skip_hidden, int external_dir_num, fio_location location);
+								   bool skip_hidden, fio_location location);
 static void opt_path_map(ConfigOption *opt, const char *arg,
 						 TablespaceList *list, const char *type);
 static void cleanup_tablespace(const char *path);
@@ -132,12 +132,9 @@ static void control_string_bad_format(const char* str);
 
 /* Tablespace mapping */
 static TablespaceList tablespace_dirs = {NULL, NULL};
-/* Extra directories mapping */
-static TablespaceList external_remap_list = {NULL, NULL};
 
 pgFile *
-pgFileNew(const char *path, const char *rel_path, bool follow_symlink,
-		  int external_dir_num, fio_location location)
+pgFileNew(const char *path, const char *rel_path, bool follow_symlink, fio_location location)
 {
 	struct stat		st;
 	pgFile		   *file;
@@ -156,7 +153,6 @@ pgFileNew(const char *path, const char *rel_path, bool follow_symlink,
 	file->size = st.st_size;
 	file->mode = st.st_mode;
 	file->mtime = st.st_mtime;
-	file->external_dir_num = external_dir_num;
 
 	return file;
 }
@@ -433,38 +429,21 @@ pgFileCompareRelPathWithString(const void *f1, const void *f2)
 	return strcmp(f1p->rel_path, f2s);
 }
 
-/*
- * Compare two pgFile with their relative path and external_dir_num in ascending
- * order of ASСII code.
- */
+/* Compare two pgFile with their relative path in ascending order of ASСII code. */
 int
-pgFileCompareRelPathWithExternal(const void *f1, const void *f2)
+pgFileCompareRelPath(const void *f1, const void *f2)
 {
 	pgFile *f1p = *(pgFile **)f1;
 	pgFile *f2p = *(pgFile **)f2;
-	int 		res;
 
-	res = strcmp(f1p->rel_path, f2p->rel_path);
-	if (res == 0)
-	{
-		if (f1p->external_dir_num > f2p->external_dir_num)
-			return 1;
-		else if (f1p->external_dir_num < f2p->external_dir_num)
-			return -1;
-		else
-			return 0;
-	}
-	return res;
+	return strcmp(f1p->rel_path, f2p->rel_path);
 }
 
-/*
- * Compare two pgFile with their rel_path and external_dir_num
- * in descending order of ASCII code.
- */
+/* Compare two pgFile with their rel_path in descending order of ASCII code. */
 int
-pgFileCompareRelPathWithExternalDesc(const void *f1, const void *f2)
+pgFileCompareRelPathDesc(const void *f1, const void *f2)
 {
-	return -pgFileCompareRelPathWithExternal(f1, f2);
+	return -pgFileCompareRelPath(f1, f2);
 }
 
 /* Compare two pgFile with their linked directory path. */
@@ -554,35 +533,24 @@ db_map_entry_free(void *entry)
  */
 void
 dir_list_file(parray *files, const char *root, bool exclude, bool follow_symlink,
-			  bool add_root, bool backup_logs, bool skip_hidden, int external_dir_num,
-			  fio_location location)
+			  bool add_root, bool backup_logs, bool skip_hidden, fio_location location)
 {
 	pgFile	   *file;
 
-	file = pgFileNew(root, "", follow_symlink, external_dir_num, location);
+	file = pgFileNew(root, "", follow_symlink, location);
 	if (file == NULL)
-	{
-		/* For external directory this is not ok */
-		if (external_dir_num > 0)
-			elog(ERROR, "External directory is not found: \"%s\"", root);
-		else
-			return;
-	}
+		return;
 
 	if (!S_ISDIR(file->mode))
 	{
-		if (external_dir_num > 0)
-			elog(ERROR, " --external-dirs option \"%s\": directory or symbolic link expected",
-					root);
-		else
-			elog(WARNING, "Skip \"%s\": unexpected file format", root);
+		elog(WARNING, "Skip \"%s\": unexpected file format", root);
 		return;
 	}
 	if (add_root)
 		parray_append(files, file);
 
 	dir_list_file_internal(files, file, root, exclude, follow_symlink,
-						   backup_logs, skip_hidden, external_dir_num, location);
+						   backup_logs, skip_hidden, location);
 
 	if (!add_root)
 		pgFileFree(file);
@@ -629,7 +597,7 @@ dir_check_file(pgFile *file, bool backup_logs)
 	 * If the directory name is in the exclude list, do not list the
 	 * contents.
 	 */
-	else if (S_ISDIR(file->mode) && !in_tablespace && file->external_dir_num == 0)
+	else if (S_ISDIR(file->mode) && !in_tablespace)
 	{
 		/*
 		 * If the item in the exclude list starts with '/', compare to
@@ -750,7 +718,7 @@ dir_check_file(pgFile *file, bool backup_logs)
 static void
 dir_list_file_internal(parray *files, pgFile *parent, const char *parent_dir,
 					   bool exclude, bool follow_symlink, bool backup_logs,
-					   bool skip_hidden, int external_dir_num, fio_location location)
+					   bool skip_hidden, fio_location location)
 {
 	DIR			  *dir;
 	struct dirent *dent;
@@ -782,8 +750,7 @@ dir_list_file_internal(parray *files, pgFile *parent, const char *parent_dir,
 		join_path_components(child, parent_dir, dent->d_name);
 		join_path_components(rel_child, parent->rel_path, dent->d_name);
 
-		file = pgFileNew(child, rel_child, follow_symlink, external_dir_num,
-						 location);
+		file = pgFileNew(child, rel_child, follow_symlink, location);
 		if (file == NULL)
 			continue;
 
@@ -839,7 +806,7 @@ dir_list_file_internal(parray *files, pgFile *parent, const char *parent_dir,
 		 */
 		if (S_ISDIR(file->mode))
 			dir_list_file_internal(files, file, child, exclude, follow_symlink,
-								   backup_logs, skip_hidden, external_dir_num, location);
+								   backup_logs, skip_hidden, location);
 	}
 
 	if (errno && errno != ENOENT)
@@ -939,13 +906,6 @@ opt_tablespace_map(ConfigOption *opt, const char *arg)
 	opt_path_map(opt, arg, &tablespace_dirs, "tablespace");
 }
 
-/* Parse external directories mapping */
-void
-opt_externaldir_map(ConfigOption *opt, const char *arg)
-{
-	opt_path_map(opt, arg, &external_remap_list, "external directory");
-}
-
 /*
  * Create directories from **dest_files** in **data_dir**.
  *
@@ -1005,10 +965,6 @@ create_data_directories(parray *dest_files, const char *data_dir, const char *ba
 			if (!S_ISDIR(file->mode))
 				continue;
 
-			/* skip external directory content */
-			if (file->external_dir_num != 0)
-				continue;
-
 			/* look for 'pg_tblspc' directory  */
 			if (strcmp(file->rel_path, PG_TBLSPC_DIR) == 0)
 			{
@@ -1038,9 +994,6 @@ create_data_directories(parray *dest_files, const char *data_dir, const char *ba
 		if (!S_ISDIR(dir->mode))
 			continue;
 
-		/* skip external directory content */
-		if (dir->external_dir_num != 0)
-			continue;
 		/* Create WAL directory and symlink if waldir_path is setting */
 		if (waldir_path && strcmp(dir->rel_path, PG_XLOG_DIR) == 0) {
 			/* get full path to PG_XLOG_DIR */
@@ -1344,84 +1297,6 @@ check_tablespace_mapping(pgBackup *backup, bool incremental, bool force, bool pg
 	return NotEmptyTblspc;
 }
 
-/* TODO: Make it consistent with check_tablespace_mapping */
-void
-check_external_dir_mapping(pgBackup *backup, bool incremental)
-{
-	TablespaceListCell *cell;
-	parray *external_dirs_to_restore;
-	int		i;
-
-	elog(LOG, "check external directories of backup %s",
-			backup_id_of(backup));
-
-	if (!backup->external_dir_str)
-	{
-	 	if (external_remap_list.head)
-			elog(ERROR, "--external-mapping option's old directory doesn't "
-				 "have an entry in list of external directories of current "
-				 "backup: \"%s\"", external_remap_list.head->old_dir);
-		return;
-	}
-
-	external_dirs_to_restore = make_external_directory_list(
-													backup->external_dir_str,
-													false);
-	/* 1 - each OLDDIR must have an entry in external_dirs_to_restore */
-	for (cell = external_remap_list.head; cell; cell = cell->next)
-	{
-		bool		found = false;
-
-		for (i = 0; i < parray_num(external_dirs_to_restore); i++)
-		{
-			char	    *external_dir = parray_get(external_dirs_to_restore, i);
-
-			if (strcmp(cell->old_dir, external_dir) == 0)
-			{
-				/* Swap new dir name with old one, it is used by 2-nd step */
-				parray_set(external_dirs_to_restore, i,
-						   pgut_strdup(cell->new_dir));
-				pfree(external_dir);
-
-				found = true;
-				break;
-			}
-		}
-		if (!found)
-			elog(ERROR, "--external-mapping option's old directory doesn't "
-				 "have an entry in list of external directories of current "
-				 "backup: \"%s\"", cell->old_dir);
-	}
-
-	/* 2 - all linked directories must be empty */
-	for (i = 0; i < parray_num(external_dirs_to_restore); i++)
-	{
-		char	    *external_dir = (char *) parray_get(external_dirs_to_restore,
-														i);
-
-		if (!incremental && !dir_is_empty(external_dir, FIO_DB_HOST))
-			elog(ERROR, "External directory is not empty: \"%s\"",
-				 external_dir);
-	}
-
-	free_dir_list(external_dirs_to_restore);
-}
-
-char *
-get_external_remap(char *current_dir)
-{
-	TablespaceListCell *cell;
-
-	for (cell = external_remap_list.head; cell; cell = cell->next)
-	{
-		char *old_dir = cell->old_dir;
-
-		if (strcmp(old_dir, current_dir) == 0)
-			return cell->new_dir;
-	}
-	return current_dir;
-}
-
 /* Parsing states for get_control_value_str() */
 #define CONTROL_WAIT_NAME			1
 #define CONTROL_INNAME				2
@@ -1632,74 +1507,12 @@ fileExists(const char *path, fio_location location)
 		return true;
 }
 
-/*
- * Construct parray containing remapped external directories paths
- * from string like /path1:/path2
- */
-parray *
-make_external_directory_list(const char *colon_separated_dirs, bool remap)
-{
-	char	   *p;
-	parray	   *list = parray_new();
-	char	   *tmp = pg_strdup(colon_separated_dirs);
-
-	p = strtok(tmp, ":");
-	while(p!=NULL)
-	{
-		char	   *external_path = pg_strdup(p);
-
-		canonicalize_path(external_path);
-		if (is_absolute_path(external_path))
-		{
-			if (remap)
-			{
-				char	   *full_path = get_external_remap(external_path);
-
-				if (full_path != external_path)
-				{
-					full_path = pg_strdup(full_path);
-					pfree(external_path);
-					external_path = full_path;
-				}
-			}
-			parray_append(list, external_path);
-		}
-		else
-			elog(ERROR, "External directory \"%s\" is not an absolute path",
-				 external_path);
-
-		p = strtok(NULL, ":");
-	}
-	pfree(tmp);
-	parray_qsort(list, pgCompareString);
-	return list;
-}
-
 /* Free memory of parray containing strings */
 void
 free_dir_list(parray *list)
 {
 	parray_walk(list, pfree);
 	parray_free(list);
-}
-
-/* Append to string "path_prefix" int "dir_num" */
-void
-makeExternalDirPathByNum(char *ret_path, const char *path_prefix, const int dir_num)
-{
-	sprintf(ret_path, "%s%d", path_prefix, dir_num);
-}
-
-/* Check if "dir" presents in "dirs_list" */
-bool
-backup_contains_external(const char *dir, parray *dirs_list)
-{
-	void *search_result;
-
-	if (!dirs_list) /* There is no external dirs in backup */
-		return false;
-	search_result = parray_bsearch(dirs_list, dir, pgCompareString);
-	return search_result != NULL;
 }
 
 /*
@@ -1751,8 +1564,7 @@ write_database_map(pgBackup *backup, parray *database_map, parray *backup_files_
 	}
 
 	/* Add metadata to backup_content.control */
-	file = pgFileNew(database_map_path, DATABASE_MAP, true, 0,
-								 FIO_BACKUP_HOST);
+	file = pgFileNew(database_map_path, DATABASE_MAP, true, FIO_BACKUP_HOST);
 	file->crc = pgFileGetCRC32C(database_map_path, false);
 	file->write_size = file->size;
 	file->uncompressed_size = file->read_size;
@@ -1830,10 +1642,10 @@ cleanup_tablespace(const char *path)
 	char	fullpath[MAXPGPATH];
 	parray *files = parray_new();
 
-	fio_list_dir(files, path, false, false, false, false, false, 0);
+	fio_list_dir(files, path, false, false, false, false, false);
 
 	/* delete leaf node first */
-	parray_qsort(files, pgFileCompareRelPathWithExternalDesc);
+	parray_qsort(files, pgFileCompareRelPathDesc);
 
 	for (i = 0; i < parray_num(files); i++)
 	{

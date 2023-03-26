@@ -23,8 +23,6 @@ typedef struct
 	pgBackup	*full_backup;
 
 	const char	*full_database_dir;
-	const char	*full_external_prefix;
-
 //	size_t		in_place_merge_bytes;
 	bool		compression_match;
 	bool		program_version_match;
@@ -42,12 +40,6 @@ typedef struct
 
 static void *merge_files(void *arg);
 static void
-reorder_external_dirs(pgBackup *to_backup, parray *to_external,
-					  parray *from_external);
-static int
-get_external_index(const char *key, const parray *list);
-
-static void
 merge_data_file(parray *parent_chain, pgBackup *full_backup,
 				pgBackup *dest_backup, pgFile *dest_file,
 				pgFile *tmp_file, const char *to_root, bool use_bitmap,
@@ -57,7 +49,7 @@ static void
 merge_non_data_file(parray *parent_chain, pgBackup *full_backup,
 				pgBackup *dest_backup, pgFile *dest_file,
 				pgFile *tmp_file, const char *full_database_dir,
-				const char *full_external_prefix, bool no_sync);
+				bool no_sync);
 
 static bool is_forward_compatible(parray *parent_chain);
 
@@ -436,10 +428,7 @@ merge_chain(InstanceState *instanceState,
 			bool no_validate, bool no_sync)
 {
 	int			i;
-	char		full_external_prefix[MAXPGPATH];
 	char		full_database_dir[MAXPGPATH];
-	parray		*full_externals = NULL,
-				*dest_externals = NULL;
 
 	parray		*result_filelist = NULL;
 	bool        use_bitmap = true;
@@ -579,7 +568,7 @@ merge_chain(InstanceState *instanceState,
 		pgBackup   *backup = (pgBackup *) parray_get(parent_chain, i);
 
 		backup->files = get_backup_filelist(backup, true);
-		parray_qsort(backup->files, pgFileCompareRelPathWithExternal);
+		parray_qsort(backup->files, pgFileCompareRelPath);
 
 		/* Set MERGING status for every member of the chain */
 		if (backup->backup_mode == BACKUP_MODE_FULL)
@@ -598,24 +587,10 @@ merge_chain(InstanceState *instanceState,
 
 	/* Construct path to database dir: /backup_dir/instance_name/FULL/database */
 	join_path_components(full_database_dir, full_backup->root_dir, DATABASE_DIR);
-	/* Construct path to external dir: /backup_dir/instance_name/FULL/external */
-	join_path_components(full_external_prefix, full_backup->root_dir, EXTERNAL_DIR);
 
 	/* Create directories */
 	create_data_directories(dest_backup->files, full_database_dir,
 							dest_backup->root_dir, false, false, FIO_BACKUP_HOST, NULL);
-
-	/* External directories stuff */
-	if (dest_backup->external_dir_str)
-		dest_externals = make_external_directory_list(dest_backup->external_dir_str, false);
-	if (full_backup->external_dir_str)
-		full_externals = make_external_directory_list(full_backup->external_dir_str, false);
-	/*
-	 * Rename external directories in FULL backup (if exists)
-	 * according to numeration of external dirs in destionation backup.
-	 */
-	if (full_externals && dest_externals)
-		reorder_external_dirs(full_backup, full_externals, dest_externals);
 
 	/* bitmap optimization rely on n_blocks, which is generally available since 2.3.0 */
 	if (parse_program_version(dest_backup->program_version) < 20300)
@@ -625,19 +600,6 @@ merge_chain(InstanceState *instanceState,
 	for (i = 0; i < parray_num(dest_backup->files); i++)
 	{
 		pgFile	   *file = (pgFile *) parray_get(dest_backup->files, i);
-
-		/* if the entry was an external directory, create it in the backup */
-		if (file->external_dir_num && S_ISDIR(file->mode))
-		{
-			char		dirpath[MAXPGPATH];
-			char		new_container[MAXPGPATH];
-
-			makeExternalDirPathByNum(new_container, full_external_prefix,
-									 file->external_dir_num);
-			join_path_components(dirpath, new_container, file->rel_path);
-			fio_mkdir(FIO_BACKUP_HOST, dirpath, DIR_PERMISSION, false);
-		}
-
 		pg_atomic_init_flag(&file->lock);
 	}
 
@@ -655,8 +617,6 @@ merge_chain(InstanceState *instanceState,
 		arg->dest_backup = dest_backup;
 		arg->full_backup = full_backup;
 		arg->full_database_dir = full_database_dir;
-		arg->full_external_prefix = full_external_prefix;
-
 		arg->compression_match = compression_match;
 		arg->program_version_match = program_version_match;
 		arg->use_bitmap = use_bitmap;
@@ -735,8 +695,6 @@ merge_chain(InstanceState *instanceState,
 	full_backup->tli = dest_backup->tli;
 	full_backup->from_replica = dest_backup->from_replica;
 
-	pfree(full_backup->external_dir_str);
-	full_backup->external_dir_str = pgut_strdup(dest_backup->external_dir_str);
 	pfree(full_backup->primary_conninfo);
 	full_backup->primary_conninfo = pgut_strdup(dest_backup->primary_conninfo);
 
@@ -769,29 +727,21 @@ merge_chain(InstanceState *instanceState,
 	if (!dest_backup->stream)
 		full_backup->wal_bytes = dest_backup->wal_bytes;
 
-	parray_qsort(result_filelist, pgFileCompareRelPathWithExternal);
+	parray_qsort(result_filelist, pgFileCompareRelPath);
 
-	write_backup_filelist(full_backup, result_filelist, full_database_dir, NULL, true);
+	write_backup_filelist(full_backup, result_filelist, full_database_dir, true);
 	write_backup(full_backup, true);
 
 	/* Delete FULL backup files, that do not exists in destination backup
 	 * Both arrays must be sorted in in reversed order to delete from leaf
 	 */
-	parray_qsort(dest_backup->files, pgFileCompareRelPathWithExternalDesc);
-	parray_qsort(full_backup->files, pgFileCompareRelPathWithExternalDesc);
+	parray_qsort(dest_backup->files, pgFileCompareRelPathDesc);
+	parray_qsort(full_backup->files, pgFileCompareRelPathDesc);
 	for (i = 0; i < parray_num(full_backup->files); i++)
 	{
 		pgFile	   *full_file = (pgFile *) parray_get(full_backup->files, i);
 
-		if (full_file->external_dir_num && full_externals)
-		{
-			char *dir_name = parray_get(full_externals, full_file->external_dir_num - 1);
-			if (backup_contains_external(dir_name, full_externals))
-				/* Dir already removed*/
-				continue;
-		}
-
-		if (parray_bsearch(dest_backup->files, full_file, pgFileCompareRelPathWithExternalDesc) == NULL)
+		if (parray_bsearch(dest_backup->files, full_file, pgFileCompareRelPathDesc) == NULL)
 		{
 			char		full_file_path[MAXPGPATH];
 
@@ -896,12 +846,6 @@ merge_rename:
 		parray_free(result_filelist);
 	}
 
-	if (dest_externals != NULL)
-		free_dir_list(dest_externals);
-
-	if (full_externals != NULL)
-		free_dir_list(full_externals);
-
 	for (i = parray_num(parent_chain) - 1; i >= 0; i--)
 	{
 		pgBackup   *backup = (pgBackup *) parray_get(parent_chain, i);
@@ -940,7 +884,6 @@ merge_files(void *arg)
 		tmp_file = pgFileInit(dest_file->rel_path);
 		tmp_file->mode = dest_file->mode;
 		tmp_file->is_datafile = dest_file->is_datafile;
-		tmp_file->external_dir_num = dest_file->external_dir_num;
 		tmp_file->dbOid = dest_file->dbOid;
 
 		/* Directories were created before */
@@ -1009,7 +952,7 @@ merge_files(void *arg)
 				pgBackup   *backup = (pgBackup *) parray_get(arguments->parent_chain, i);
 
 				/* lookup file in intermediate backup */
-				res_file =  parray_bsearch(backup->files, dest_file, pgFileCompareRelPathWithExternal);
+				res_file =  parray_bsearch(backup->files, dest_file, pgFileCompareRelPath);
 				file = (res_file) ? *res_file : NULL;
 
 				/* Destination file is not exists yet,
@@ -1044,7 +987,7 @@ merge_files(void *arg)
 			pgFile	   **res_file = NULL;
 			pgFile	   *file = NULL;
 			res_file = parray_bsearch(arguments->full_backup->files, dest_file,
-										pgFileCompareRelPathWithExternal);
+										pgFileCompareRelPath);
 			file = (res_file) ? *res_file : NULL;
 
 			/* If file didn`t changed in any way, then in-place merge is possible */
@@ -1104,7 +1047,6 @@ merge_files(void *arg)
 								arguments->dest_backup,
 								dest_file, tmp_file,
 								arguments->full_database_dir,
-								arguments->full_external_prefix,
 								arguments->no_sync);
 
 done:
@@ -1115,82 +1057,6 @@ done:
 	arguments->ret = 0;
 
 	return NULL;
-}
-
-/* Recursively delete a directory and its contents */
-static void
-remove_dir_with_files(const char *path)
-{
-	parray	   *files = parray_new();
-	int			i;
-	char 		full_path[MAXPGPATH];
-
-	dir_list_file(files, path, false, false, true, false, false, 0, FIO_LOCAL_HOST);
-	parray_qsort(files, pgFileCompareRelPathWithExternalDesc);
-	for (i = 0; i < parray_num(files); i++)
-	{
-		pgFile	   *file = (pgFile *) parray_get(files, i);
-
-		join_path_components(full_path, path, file->rel_path);
-
-		if (fio_remove(FIO_LOCAL_HOST, full_path, true) == 0)
-			elog(LOG, "Deleted \"%s\"", full_path);
-		else
-			elog(ERROR, "Cannot delete file or directory \"%s\": %s", full_path, strerror(errno));
-	}
-
-	/* cleanup */
-	parray_walk(files, pgFileFree);
-	parray_free(files);
-}
-
-/* Get index of external directory */
-static int
-get_external_index(const char *key, const parray *list)
-{
-	int			i;
-
-	if (!list) /* Nowhere to search */
-		return -1;
-	for (i = 0; i < parray_num(list); i++)
-	{
-		if (strcmp(key, parray_get(list, i)) == 0)
-			return i + 1;
-	}
-	return -1;
-}
-
-/* Rename directories in to_backup according to order in from_external */
-static void
-reorder_external_dirs(pgBackup *to_backup, parray *to_external,
-					  parray *from_external)
-{
-	char		externaldir_template[MAXPGPATH];
-	int			i;
-
-	join_path_components(externaldir_template, to_backup->root_dir, EXTERNAL_DIR);
-	for (i = 0; i < parray_num(to_external); i++)
-	{
-		int from_num = get_external_index(parray_get(to_external, i),
-										  from_external);
-		if (from_num == -1)
-		{
-			char old_path[MAXPGPATH];
-			makeExternalDirPathByNum(old_path, externaldir_template, i + 1);
-			remove_dir_with_files(old_path);
-		}
-		else if (from_num != i + 1)
-		{
-			char old_path[MAXPGPATH];
-			char new_path[MAXPGPATH];
-			makeExternalDirPathByNum(old_path, externaldir_template, i + 1);
-			makeExternalDirPathByNum(new_path, externaldir_template, from_num);
-			elog(LOG, "Rename %s to %s", old_path, new_path);
-			if (rename (old_path, new_path) == -1)
-				elog(ERROR, "Could not rename directory \"%s\" to \"%s\": %s",
-					 old_path, new_path, strerror(errno));
-		}
-	}
 }
 
 /* Merge is usually happens as usual backup/restore via temp files, unless
@@ -1286,15 +1152,12 @@ merge_data_file(parray *parent_chain, pgBackup *full_backup,
 }
 
 /*
- * For every destionation file lookup the newest file in chain and
- * copy it.
- * Additional pain is external directories.
+ * For every destionation file lookup the newest file in chain and copy it.
  */
 void
 merge_non_data_file(parray *parent_chain, pgBackup *full_backup,
 				pgBackup *dest_backup, pgFile *dest_file, pgFile *tmp_file,
-				const char *full_database_dir, const char *to_external_prefix,
-				bool no_sync)
+				const char *full_database_dir, bool no_sync)
 {
 	int		i;
 	char	to_fullpath[MAXPGPATH];
@@ -1303,17 +1166,7 @@ merge_non_data_file(parray *parent_chain, pgBackup *full_backup,
 	pgBackup *from_backup = NULL;
 	pgFile *from_file = NULL;
 
-	/* We need to make full path to destination file */
-	if (dest_file->external_dir_num)
-	{
-		char temp[MAXPGPATH];
-		makeExternalDirPathByNum(temp, to_external_prefix,
-								 dest_file->external_dir_num);
-		join_path_components(to_fullpath, temp, dest_file->rel_path);
-	}
-	else
-		join_path_components(to_fullpath, full_database_dir, dest_file->rel_path);
-
+	join_path_components(to_fullpath, full_database_dir, dest_file->rel_path);
 	snprintf(to_fullpath_tmp, MAXPGPATH, "%s_tmp", to_fullpath);
 
 	/*
@@ -1329,7 +1182,7 @@ merge_non_data_file(parray *parent_chain, pgBackup *full_backup,
 		from_backup = (pgBackup *) parray_get(parent_chain, i);
 
 		/* lookup file in intermediate backup */
-		res_file =  parray_bsearch(from_backup->files, dest_file, pgFileCompareRelPathWithExternal);
+		res_file =  parray_bsearch(from_backup->files, dest_file, pgFileCompareRelPath);
 		from_file = (res_file) ? *res_file : NULL;
 
 		/*
@@ -1356,17 +1209,6 @@ merge_non_data_file(parray *parent_chain, pgBackup *full_backup,
 		elog(ERROR, "Failed to locate a full copy of non-data file \"%s\"", dest_file->rel_path);
 
 	/* set path to source file */
-	if (from_file->external_dir_num)
-	{
-		char temp[MAXPGPATH];
-		char external_prefix[MAXPGPATH];
-
-		join_path_components(external_prefix, from_backup->root_dir, EXTERNAL_DIR);
-		makeExternalDirPathByNum(temp, external_prefix, dest_file->external_dir_num);
-
-		join_path_components(from_fullpath, temp, from_file->rel_path);
-	}
-	else
 	{
 		char backup_database_dir[MAXPGPATH];
 		join_path_components(backup_database_dir, from_backup->root_dir, DATABASE_DIR);

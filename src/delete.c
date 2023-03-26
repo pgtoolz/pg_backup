@@ -757,10 +757,10 @@ delete_backup_files(pgBackup *backup)
 
 	/* list files to be deleted */
 	files = parray_new();
-	dir_list_file(files, backup->root_dir, false, false, true, false, false, 0, FIO_BACKUP_HOST);
+	dir_list_file(files, backup->root_dir, false, false, true, false, false, FIO_BACKUP_HOST);
 
 	/* delete leaf node first */
-	parray_qsort(files, pgFileCompareRelPathWithExternalDesc);
+	parray_qsort(files, pgFileCompareRelPathDesc);
 	num_files = parray_num(files);
 	for (i = 0; i < num_files; i++)
 	{

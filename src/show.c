@@ -462,10 +462,6 @@ print_backup_json_object(PQExpBuffer buf, pgBackup *backup)
 		json_add_value(buf, "primary_conninfo", backup->primary_conninfo,
 						json_level, true);
 
-	if (backup->external_dir_str)
-		json_add_value(buf, "external-dirs", backup->external_dir_str,
-						json_level, true);
-
 	json_add_value(buf, "status", status2str(backup->status), json_level,
 					true);
 

@@ -9,7 +9,6 @@ pg_backup - утилита для управления резервным коп
 
   pg_backup set-config -B backup-path --instance=instance_name
                  [-D pgdata-path]
-                 [--external-dirs=external-directories-paths]
                  [--log-level-console=log-level-console]
                  [--log-level-file=log-level-file]
                  [--log-format-file=log-format-file]
@@ -46,7 +45,6 @@ pg_backup - утилита для управления резервным коп
                  [--stream [-S slot-name] [--temp-slot]]
                  [--backup-pg-log] [-j num-threads] [--progress]
                  [--no-validate] [--skip-block-validation]
-                 [--external-dirs=external-directories-paths]
                  [--no-sync]
                  [--log-level-console=log-level-console]
                  [--log-level-file=log-level-file]
@@ -87,8 +85,6 @@ pg_backup - утилита для управления резервным коп
                  [-S | --primary-slot-name=slotname]
                  [--no-validate] [--skip-block-validation]
                  [-T OLDDIR=NEWDIR] [--progress]
-                 [--external-mapping=OLDDIR=NEWDIR]
-                 [--skip-external-dirs] [--no-sync]
                  [-X WALDIR | --waldir=WALDIR]
                  [-I | --incremental-mode=none|checksum|lsn]
                  [--db-include | --db-exclude]
@@ -136,7 +132,6 @@ pg_backup - утилита для управления резервным коп
 
   pg_backup add-instance -B backup-path -D pgdata-path
                  --instance=instance_name
-                 [--external-dirs=external-directories-paths]
                  [--remote-proto] [--remote-host]
                  [--remote-port] [--remote-path] [--remote-user]
                  [--ssh-options]

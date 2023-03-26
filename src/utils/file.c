@@ -40,7 +40,6 @@ typedef struct
 	bool add_root;
 	bool backup_logs;
 	bool skip_hidden;
-	int  external_dir_num;
 } fio_list_dir_request;
 
 typedef struct
@@ -54,7 +53,6 @@ typedef struct
 	Oid     relOid;
 	ForkName   forkName;
 	int     segno;
-	int     external_dir_num;
 	int     linked_len;
 } fio_pgFile;
 
@@ -2834,7 +2832,7 @@ cleanup:
 static void
 fio_list_dir_internal(parray *files, const char *root, bool exclude,
 								  bool follow_symlink, bool add_root, bool backup_logs,
-								  bool skip_hidden, int external_dir_num)
+								  bool skip_hidden)
 {
 	fio_header hdr;
 	fio_list_dir_request req;
@@ -2847,7 +2845,6 @@ fio_list_dir_internal(parray *files, const char *root, bool exclude,
 	req.add_root = add_root;
 	req.backup_logs = backup_logs;
 	req.skip_hidden = skip_hidden;
-	req.external_dir_num = external_dir_num;
 
 	hdr.cop = FIO_LIST_DIR;
 	hdr.size = sizeof(req);
@@ -2886,7 +2883,6 @@ fio_list_dir_internal(parray *files, const char *root, bool exclude,
 			file->relOid = fio_file.relOid;
 			file->forkName = fio_file.forkName;
 			file->segno = fio_file.segno;
-			file->external_dir_num = fio_file.external_dir_num;
 
 			if (fio_file.linked_len > 0)
 			{
@@ -2941,7 +2937,7 @@ fio_list_dir_impl(int out, char* buf)
 
 	dir_list_file(file_files, req->path, req->exclude, req->follow_symlink,
 				  req->add_root, req->backup_logs, req->skip_hidden,
-				  req->external_dir_num, FIO_LOCAL_HOST);
+				  FIO_LOCAL_HOST);
 
 	/* send information about files to the main process */
 	for (i = 0; i < parray_num(file_files); i++)
@@ -2958,7 +2954,6 @@ fio_list_dir_impl(int out, char* buf)
 		fio_file.relOid = file->relOid;
 		fio_file.forkName = file->forkName;
 		fio_file.segno = file->segno;
-		fio_file.external_dir_num = file->external_dir_num;
 
 		if (file->linked)
 			fio_file.linked_len = strlen(file->linked) + 1;
@@ -2991,14 +2986,14 @@ fio_list_dir_impl(int out, char* buf)
 void
 fio_list_dir(parray *files, const char *root, bool exclude,
 				  bool follow_symlink, bool add_root, bool backup_logs,
-				  bool skip_hidden, int external_dir_num)
+				  bool skip_hidden)
 {
 	if (fio_is_remote(FIO_DB_HOST))
 		fio_list_dir_internal(files, root, exclude, follow_symlink, add_root,
-							  backup_logs, skip_hidden, external_dir_num);
+							  backup_logs, skip_hidden);
 	else
 		dir_list_file(files, root, exclude, follow_symlink, add_root,
-					  backup_logs, skip_hidden, external_dir_num, FIO_LOCAL_HOST);
+					  backup_logs, skip_hidden, FIO_LOCAL_HOST);
 }
 
 PageState *

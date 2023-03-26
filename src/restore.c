@@ -22,10 +22,8 @@ typedef struct
 	parray	   *pgdata_files;
 	parray	   *dest_files;
 	pgBackup   *dest_backup;
-	parray	   *dest_external_dirs;
 	parray	   *parent_chain;
 	parray	   *dbOid_exclude_list;
-	bool		skip_external_dirs;
 	const char *to_root;
 	size_t		restored_bytes;
 	bool        use_bitmap;
@@ -416,13 +414,6 @@ do_restore_or_validate(InstanceState *instanceState, time_t target_backup_id, pg
 					"disable incremental restore");
 			params->incremental_mode = INCR_NONE;
 		}
-
-		/* no point in checking external directories if their restore is not requested */
-		//TODO:
-		//		- make check_external_dir_mapping more like check_tablespace_mapping
-		//		- honor force flag in case of incremental restore just like check_tablespace_mapping
-		if (!params->skip_external_dirs)
-			check_external_dir_mapping(dest_backup, params->incremental_mode != INCR_NONE);
 	}
 
 	/* At this point we are sure that parent chain is whole
@@ -702,7 +693,6 @@ restore_chain(pgBackup *dest_backup, parray *parent_chain,
 	char		timestamp[100];
 	parray      *pgdata_files = NULL;
 	parray		*dest_files = NULL;
-	parray		*external_dirs = NULL;
 	/* arrays with meta info for multi threaded backup */
 	pthread_t  *threads;
 	restore_files_arg *threads_args;
@@ -764,7 +754,7 @@ restore_chain(pgBackup *dest_backup, parray *parent_chain,
 		 * destination file in intermediate backups file lists
 		 * using bsearch.
 		 */
-		parray_qsort(backup->files, pgFileCompareRelPathWithExternal);
+		parray_qsort(backup->files, pgFileCompareRelPath);
 	}
 
 	/* If dest backup version is older than 2.4.0, then bitmap optimization
@@ -798,49 +788,12 @@ restore_chain(pgBackup *dest_backup, parray *parent_chain,
 							params->incremental_mode != INCR_NONE,
 							FIO_DB_HOST, params->waldir);
 
-	/*
-	 * Restore dest_backup external directories.
-	 */
-	if (dest_backup->external_dir_str && !params->skip_external_dirs)
-	{
-		external_dirs = make_external_directory_list(dest_backup->external_dir_str, true);
-
-		if (!external_dirs)
-			elog(ERROR, "Failed to get a list of external directories");
-
-		if (parray_num(external_dirs) > 0)
-			elog(LOG, "Restore external directories");
-
-		for (i = 0; i < parray_num(external_dirs); i++)
-			fio_mkdir(FIO_DB_HOST, parray_get(external_dirs, i),
-					  DIR_PERMISSION, false);
-	}
-
-	/*
-	 * Setup directory structure for external directories
-	 */
+	/* Calc dirs for total_bytes */
 	for (i = 0; i < parray_num(dest_files); i++)
 	{
 		pgFile	   *file = (pgFile *) parray_get(dest_files, i);
-
 		if (S_ISDIR(file->mode))
 			total_bytes += 4096;
-
-		if (!params->skip_external_dirs &&
-			file->external_dir_num && S_ISDIR(file->mode))
-		{
-			char	   *external_path;
-			char		dirpath[MAXPGPATH];
-
-			if (parray_num(external_dirs) < file->external_dir_num - 1)
-				elog(ERROR, "Inconsistent external directory backup metadata");
-
-			external_path = parray_get(external_dirs, file->external_dir_num - 1);
-			join_path_components(dirpath, external_path, file->rel_path);
-
-			elog(LOG, "Create external directory \"%s\"", dirpath);
-			fio_mkdir(FIO_DB_HOST, dirpath, file->mode, false);
-		}
 	}
 
 	/* setup threads */
@@ -854,7 +807,7 @@ restore_chain(pgBackup *dest_backup, parray *parent_chain,
 		elog(INFO, "Extracting the content of destination directory for incremental restore");
 
 		time(&start_time);
-		fio_list_dir(pgdata_files, pgdata_path, false, true, false, false, true, 0);
+		fio_list_dir(pgdata_files, pgdata_path, false, true, false, false, true);
 
 		/*
 		 * TODO:
@@ -865,24 +818,7 @@ restore_chain(pgBackup *dest_backup, parray *parent_chain,
 		 *    it is just left as it is.
 		 *    Lookup tests.incr_restore.IncrRestoreTest.test_incr_restore_with_tablespace_5
 		 */
-
-		/* get external dirs content */
-		if (external_dirs)
-		{
-			for (i = 0; i < parray_num(external_dirs); i++)
-			{
-				char *external_path = parray_get(external_dirs, i);
-				parray	*external_files = parray_new();
-
-				fio_list_dir(external_files, external_path,
-							 false, true, false, false, true, i+1);
-
-				parray_concat(pgdata_files, external_files);
-				parray_free(external_files);
-			}
-		}
-
-		parray_qsort(pgdata_files, pgFileCompareRelPathWithExternalDesc);
+		parray_qsort(pgdata_files, pgFileCompareRelPathDesc);
 
 		time(&end_time);
 		pretty_time_interval(difftime(end_time, start_time),
@@ -898,12 +834,11 @@ restore_chain(pgBackup *dest_backup, parray *parent_chain,
 			bool     redundant = true;
 			pgFile	*file = (pgFile *) parray_get(pgdata_files, i);
 
-			if (parray_bsearch(dest_backup->files, file, pgFileCompareRelPathWithExternal))
+			if (parray_bsearch(dest_backup->files, file, pgFileCompareRelPath))
 				redundant = false;
 
 			/* pg_filenode.map are always restored, because it's crc cannot be trusted */
-			if (file->external_dir_num == 0 &&
-				pg_strcasecmp(file->name, RELMAPPER_FILENAME) == 0)
+			if (pg_strcasecmp(file->name, RELMAPPER_FILENAME) == 0)
 				redundant = true;
 
 			/* do not delete the useful internal directories */
@@ -972,10 +907,8 @@ restore_chain(pgBackup *dest_backup, parray *parent_chain,
 		arg->dest_files = dest_files;
 		arg->pgdata_files = pgdata_files;
 		arg->dest_backup = dest_backup;
-		arg->dest_external_dirs = external_dirs;
 		arg->parent_chain = parent_chain;
 		arg->dbOid_exclude_list = dbOid_exclude_list;
-		arg->skip_external_dirs = params->skip_external_dirs;
 		arg->to_root = pgdata_path;
 		arg->use_bitmap = use_bitmap;
 		arg->incremental_mode = params->incremental_mode;
@@ -1040,25 +973,12 @@ restore_chain(pgBackup *dest_backup, parray *parent_chain,
 			if (S_ISDIR(dest_file->mode))
 				continue;
 
-			/* skip external files if ordered to do so */
-			if (dest_file->external_dir_num > 0 &&
-				params->skip_external_dirs)
-				continue;
-
 			/* construct fullpath */
-			if (dest_file->external_dir_num == 0)
-			{
-				if (strcmp(PG_TABLESPACE_MAP_FILE, dest_file->rel_path) == 0)
-					continue;
-				if (strcmp(DATABASE_MAP, dest_file->rel_path) == 0)
-					continue;
-				join_path_components(to_fullpath, pgdata_path, dest_file->rel_path);
-			}
-			else
-			{
-				char *external_path = parray_get(external_dirs, dest_file->external_dir_num - 1);
-				join_path_components(to_fullpath, external_path, dest_file->rel_path);
-			}
+			if (strcmp(PG_TABLESPACE_MAP_FILE, dest_file->rel_path) == 0)
+				continue;
+			if (strcmp(DATABASE_MAP, dest_file->rel_path) == 0)
+				continue;
+			join_path_components(to_fullpath, pgdata_path, dest_file->rel_path);
 
 			/* TODO: write test for case: file to be synced is missing */
 			if (fio_sync(FIO_DB_HOST, to_fullpath) != 0)
@@ -1074,9 +994,6 @@ restore_chain(pgBackup *dest_backup, parray *parent_chain,
 	/* cleanup */
 	pfree(threads);
 	pfree(threads_args);
-
-	if (external_dirs != NULL)
-		free_dir_list(external_dirs);
 
 	if (pgdata_files)
 	{
@@ -1132,7 +1049,7 @@ restore_files(void *arg)
 			 i + 1, n_files, dest_file->rel_path);
 
 		/* Only files from pgdata can be skipped by partial restore */
-		if (arguments->dbOid_exclude_list && dest_file->external_dir_num == 0)
+		if (arguments->dbOid_exclude_list)
 		{
 			/* Check if the file belongs to the database we exclude */
 			if (parray_bsearch(arguments->dbOid_exclude_list,
@@ -1152,37 +1069,24 @@ restore_files(void *arg)
 		}
 
 		/* Do not restore tablespace_map file */
-		if ((dest_file->external_dir_num == 0) &&
-			strcmp(PG_TABLESPACE_MAP_FILE, dest_file->rel_path) == 0)
+		if (strcmp(PG_TABLESPACE_MAP_FILE, dest_file->rel_path) == 0)
 		{
 			elog(LOG, "Skip tablespace_map");
 			continue;
 		}
 
 		/* Do not restore database_map file */
-		if ((dest_file->external_dir_num == 0) &&
-			strcmp(DATABASE_MAP, dest_file->rel_path) == 0)
+		if (strcmp(DATABASE_MAP, dest_file->rel_path) == 0)
 		{
 			elog(LOG, "Skip database_map");
 			continue;
 		}
 
-		/* Do no restore external directory file if a user doesn't want */
-		if (arguments->skip_external_dirs && dest_file->external_dir_num > 0)
-			continue;
-
 		/* set fullpath of destination file */
-		if (dest_file->external_dir_num == 0)
-			join_path_components(to_fullpath, arguments->to_root, dest_file->rel_path);
-		else
-		{
-			char	*external_path = parray_get(arguments->dest_external_dirs,
-												dest_file->external_dir_num - 1);
-			join_path_components(to_fullpath, external_path, dest_file->rel_path);
-		}
+		join_path_components(to_fullpath, arguments->to_root, dest_file->rel_path);
 
 		if (arguments->incremental_mode != INCR_NONE &&
-			parray_bsearch(arguments->pgdata_files, dest_file, pgFileCompareRelPathWithExternalDesc))
+			parray_bsearch(arguments->pgdata_files, dest_file, pgFileCompareRelPathDesc))
 		{
 			already_exists = true;
 		}
@@ -2015,8 +1919,7 @@ get_dbOid_exclude_list(pgBackup *backup, parray *datname_list,
 	{
 		pgFile	   *file = (pgFile *) parray_get(files, i);
 
-		if ((file->external_dir_num == 0) &&
-			strcmp(DATABASE_MAP, file->name) == 0)
+		if (strcmp(DATABASE_MAP, file->name) == 0)
 		{
 			database_map_file = file;
 			break;
