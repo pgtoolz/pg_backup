@@ -1007,9 +1007,6 @@ class DeltaTest(ProbackupTest, unittest.TestCase):
 
         # Nullify some block in PostgreSQL
         file = os.path.join(node.data_dir, file_path).replace("\\", "/")
-        if os.name == 'nt':
-            file = file.replace("\\", "/")
-
         with open(file, 'r+b', 0) as f:
             f.seek(8192)
             f.write(b"\x00"*8192)

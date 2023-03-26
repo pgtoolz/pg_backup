@@ -161,11 +161,10 @@ class PostgresNodeExtended(testgres.PostgresNode):
 
     def kill(self, someone = None):
         if self.is_started:
-            sig = signal.SIGKILL if os.name != 'nt' else signal.SIGBREAK
             if someone == None:
-                os.kill(self.pid, sig)
+                os.kill(self.pid, signal.SIGKILL)
             else:
-                os.kill(self.auxiliary_pids[someone][0], sig)
+                os.kill(self.auxiliary_pids[someone][0], signal.SIGKILL)
             self.is_started = False
 
     def table_checksum(self, table, dbname="postgres"):
@@ -209,6 +208,9 @@ class ProbackupTest(object):
             self.verbose = True
         else:
             self.verbose = False
+
+        if os.name != 'posix':
+            raise AssertionError(f"Unsupported OS family: {os.name}")
 
         self.test_env = os.environ.copy()
         envs_list = [
@@ -300,15 +302,9 @@ class ProbackupTest(object):
             print('pg_backup binary is not found')
             exit(1)
 
-        if os.name == 'posix':
-            self.EXTERNAL_DIRECTORY_DELIMITER = ':'
-            os.environ['PATH'] = os.path.dirname(
-                self.probackup_path) + ':' + os.environ['PATH']
-
-        elif os.name == 'nt':
-            self.EXTERNAL_DIRECTORY_DELIMITER = ';'
-            os.environ['PATH'] = os.path.dirname(
-                self.probackup_path) + ';' + os.environ['PATH']
+        self.EXTERNAL_DIRECTORY_DELIMITER = ':'
+        os.environ['PATH'] = os.path.dirname(
+            self.probackup_path) + ':' + os.environ['PATH']
 
         self.probackup_old_path = None
 
@@ -1374,14 +1370,8 @@ class ProbackupTest(object):
             options['archive_mode'] = 'on'
 
         if custom_archive_command is None:
-            if os.name == 'posix':
-                options['archive_command'] = '"{0}" archive-push -B {1} --instance={2} '.format(
-                    self.probackup_path, backup_dir, instance)
-
-            elif os.name == 'nt':
-                options['archive_command'] = '"{0}" archive-push -B {1} --instance={2} '.format(
-                    self.probackup_path.replace("\\","\\\\"),
-                    backup_dir.replace("\\","\\\\"), instance)
+            options['archive_command'] = '"{0}" archive-push -B {1} --instance={2} '.format(
+                self.probackup_path, backup_dir, instance)
 
             # don`t forget to kill old_binary after remote ssh release
             if self.remote and not old_binary:
@@ -1403,11 +1393,7 @@ class ProbackupTest(object):
                 options['archive_command'] += '--archive-timeout={0} '.format(
                     archive_timeout)
 
-            if os.name == 'posix':
-                options['archive_command'] += '--wal-file-path=%p --wal-file-name=%f'
-
-            elif os.name == 'nt':
-                options['archive_command'] += '--wal-file-path="%p" --wal-file-name="%f"'
+            options['archive_command'] += '--wal-file-path=%p --wal-file-name=%f'
 
             if log_level:
                 options['archive_command'] += ' --log-level-console={0}'.format(log_level)
@@ -1421,25 +1407,15 @@ class ProbackupTest(object):
 
         # parse postgresql.auto.conf
         restore_command = ''
-        if os.name == 'posix':
-            restore_command += '{0} archive-get -B {1} --instance={2} '.format(
-                self.probackup_path, backup_dir, instance)
-
-        elif os.name == 'nt':
-            restore_command += '"{0}" archive-get -B {1} --instance={2} '.format(
-                self.probackup_path.replace("\\","\\\\"),
-                backup_dir.replace("\\","\\\\"), instance)
+        restore_command += '{0} archive-get -B {1} --instance={2} '.format(
+            self.probackup_path, backup_dir, instance)
 
         # don`t forget to kill old_binary after remote ssh release
         if self.remote:
             restore_command += '--remote-proto=ssh '
             restore_command += '--remote-host=localhost '
 
-        if os.name == 'posix':
-            restore_command += '--wal-file-path=%p --wal-file-name=%f'
-
-        elif os.name == 'nt':
-            restore_command += '--wal-file-path="%p" --wal-file-name="%f"'
+        restore_command += '--wal-file-path=%p --wal-file-name=%f'
 
         return restore_command
 

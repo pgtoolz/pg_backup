@@ -1717,14 +1717,8 @@ class ArchiveTest(ProbackupTest, unittest.TestCase):
         self.init_pb(backup_dir)
         self.add_instance(backup_dir, 'node', node)
         self.set_archiving(backup_dir, 'node', node)
-        if os.name == 'posix':
-            archive_command = '\"{0}\" archive-push -B \"{1}\" --instance \"{2}\" --wal-file-name=%f'.format(
-                self.probackup_path, backup_dir, 'node')
-        elif os.name == 'nt':
-            archive_command = '\"{0}\" archive-push -B \"{1}\" --instance \"{2}\" --wal-file-name=%f'.format(
-                self.probackup_path, backup_dir, 'node').replace("\\","\\\\")
-        else:
-            self.assertTrue(False, 'Unexpected os family')
+        archive_command = '\"{0}\" archive-push -B \"{1}\" --instance \"{2}\" --wal-file-name=%f'.format(
+            self.probackup_path, backup_dir, 'node')
 
         self.set_auto_conf(
                 node,
@@ -1765,12 +1759,7 @@ class ArchiveTest(ProbackupTest, unittest.TestCase):
         wal_dir = os.path.join(self.tmp_path, self.module_name, self.fname, 'intermediate_dir')
         shutil.rmtree(wal_dir, ignore_errors=True)
         os.makedirs(wal_dir)
-        if os.name == 'posix':
-            self.set_archiving(backup_dir, 'node', node, custom_archive_command='cp -v %p {0}/%f'.format(wal_dir))
-        elif os.name == 'nt':
-            self.set_archiving(backup_dir, 'node', node, custom_archive_command='copy /Y "%p" "{0}\\\\%f"'.format(wal_dir.replace("\\","\\\\")))
-        else:
-            self.assertTrue(False, 'Unexpected os family')
+        self.set_archiving(backup_dir, 'node', node, custom_archive_command='cp -v %p {0}/%f'.format(wal_dir))
 
         node.slow_start()
         node.safe_psql(
