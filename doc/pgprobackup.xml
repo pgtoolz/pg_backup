@@ -4109,7 +4109,7 @@ pg_backup restore -B <replaceable>backup_dir</replaceable> --instance <replaceab
 pg_backup checkdb
 [-B <replaceable>backup_dir</replaceable>] [--instance <replaceable>instance_name</replaceable>] [-D <replaceable>data_dir</replaceable>]
 [--help] [-j <replaceable>num_threads</replaceable>] [--progress]
-[--amcheck [--skip-block-validation] [--checkunique] [--heapallindexed]]
+[--amcheck [--skip-block-validation] [--heapallindexed]]
 [<replaceable>connection_options</replaceable>] [<replaceable>logging_options</replaceable>]
 </programlisting>
       <para>
@@ -4128,26 +4128,8 @@ pg_backup checkdb
         extension or the <application>amcheck_next</application> extension
         installed in the database to check its indexes. For databases
         without <application>amcheck</application>, index verification will be skipped.
-        Additional options <option>--checkunique</option> and <option>--heapallindexed</option>
-        are effective depending on the version of <application>amcheck</application> installed.
-      </para>
-      </listitem>
-      </varlistentry>
-
-      <varlistentry>
-<term><option>--checkunique</option></term>
-      <listitem>
-      <para>
-        Verifies unique constraints during logical verification of indexes.
-        You can use this flag only together with the <option>--amcheck</option> flag when
-        the <application>amcheck</application> extension is
-        installed in the database.
-      </para>
-      <para>
-        The verification of unique constraints is only possible if in the version of the
-        <application>amcheck</application> extension you are using, the
-        <function>bt_index_check</function> function takes the
-        <parameter>checkunique</parameter> parameter.
+        Additional option <option>--heapallindexed</option>
+        is effective depending on the version of <application>amcheck</application> installed.
       </para>
       </listitem>
       </varlistentry>
