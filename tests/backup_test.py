@@ -1688,9 +1688,6 @@ class BackupTest(ProbackupTest, unittest.TestCase):
     # @unittest.skip("skip")
     def test_basic_missing_file_permissions(self):
         """"""
-        if os.name == 'nt':
-            self.skipTest('Skipped because it is POSIX only test')
-
         backup_dir = os.path.join(self.tmp_path, self.module_name, self.fname, 'backup')
         node = self.make_simple_node(
             base_dir=os.path.join(self.module_name, self.fname, 'node'),
@@ -1731,9 +1728,6 @@ class BackupTest(ProbackupTest, unittest.TestCase):
     # @unittest.skip("skip")
     def test_basic_missing_dir_permissions(self):
         """"""
-        if os.name == 'nt':
-            self.skipTest('Skipped because it is POSIX only test')
-
         backup_dir = os.path.join(self.tmp_path, self.module_name, self.fname, 'backup')
         node = self.make_simple_node(
             base_dir=os.path.join(self.module_name, self.fname, 'node'),
