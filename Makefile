@@ -1,36 +1,36 @@
-# pg_probackup build system
+# pg_backup build system
 #
-# You can build pg_probackup in different ways:
+# You can build pg_backup in different ways:
 #
 # 1. in source tree using PGXS (with already installed PG and existing PG sources)
-# git clone https://github.com/postgrespro/pg_probackup pg_probackup
-# cd pg_probackup
+# git clone https://github.com/pgtoolz/pg_backup pg_backup
+# cd pg_backup
 # make USE_PGXS=1 PG_CONFIG=<path_to_pg_config> top_srcdir=<path_to_PostgreSQL_source_tree>
 #
 # 2. out of source using PGXS
-# git clone https://github.com/postgrespro/pg_probackup pg_probackup-src
-# mkdir pg_probackup-build && cd pg_probackup-build
-# make USE_PGXS=1 PG_CONFIG=<path_to_pg_config> top_srcdir=<path_to_PostgreSQL_source_tree> -f ../pg_probackup-src/Makefile
+# git clone https://github.com/pgtoolz/pg_backup pg_backup-src
+# mkdir pg_backup-build && cd pg_backup-build
+# make USE_PGXS=1 PG_CONFIG=<path_to_pg_config> top_srcdir=<path_to_PostgreSQL_source_tree> -f ../pg_backup-src/Makefile
 #
 # 3. in PG source (without PGXS -- using only PG sources)
 # git clone https://git.postgresql.org/git/postgresql.git postgresql
-# git clone https://github.com/postgrespro/pg_probackup postgresql/contrib/pg_probackup
+# git clone https://github.com/pgtoolz/pg_backup postgresql/contrib/pg_backup
 # cd postgresql
 # ./configure ... && make
-# make -C contrib/pg_probackup
+# make -C contrib/pg_backup
 #
 # 4. out of PG source and without PGXS
 # git clone https://git.postgresql.org/git/postgresql.git postgresql-src
-# git clone https://github.com/postgrespro/pg_probackup postgresql-src/contrib/pg_probackup
+# git clone https://github.com/pgtoolz/pg_backup postgresql-src/contrib/pg_backup
 # mkdir postgresql-build && cd postgresql-build
 # ../postgresql-src/configure ... && make
-# make -C contrib/pg_probackup
+# make -C contrib/pg_backup
 #
 top_pbk_srcdir := $(dir $(realpath $(firstword $(MAKEFILE_LIST))))
 
 PROGRAM := pg_backup
 
-# pg_probackup sources
+# pg_backup sources
 OBJS := src/utils/configuration.o src/utils/json.o src/utils/logger.o \
 	src/utils/parray.o src/utils/pgut.o src/utils/thread.o src/utils/remote.o src/utils/file.o
 OBJS += src/archive.o src/backup.o src/catalog.o src/checkdb.o src/configure.o src/data.o \
