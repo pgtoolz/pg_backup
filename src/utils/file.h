@@ -89,7 +89,7 @@ extern bool    fio_is_remote_simple(fio_location location);
 
 extern void    fio_communicate(int in, int out);
 extern void    fio_disconnect(void);
-extern void    fio_get_agent_version(int* protocol, char* payload_buf, size_t payload_buf_size);
+extern int     fio_get_agent_version(void);
 
 #define FIO_FDMAX 64
 #define FIO_PIPE_MARKER 0x40000000
