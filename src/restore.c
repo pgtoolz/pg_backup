@@ -1194,7 +1194,7 @@ restore_files(void *arg)
 		 * array of checksums for every page.
 		 */
 		if (already_exists &&
-			dest_file->is_datafile && !dest_file->is_cfs &&
+			dest_file->is_datafile &&
 			dest_file->n_blocks > 0)
 		{
 			if (arguments->incremental_mode == INCR_LSN)
@@ -1236,17 +1236,17 @@ restore_files(void *arg)
 			elog(ERROR, "Cannot change mode of \"%s\": %s", to_fullpath,
 				 strerror(errno));
 
-		if (!dest_file->is_datafile || dest_file->is_cfs)
-			elog(LOG, "Restoring non-data file: \"%s\"", to_fullpath);
-		else
+		if (dest_file->is_datafile)
 			elog(LOG, "Restoring data file: \"%s\"", to_fullpath);
+		else
+			elog(LOG, "Restoring non-data file: \"%s\"", to_fullpath);
 
 		// If destination file is 0 sized, then just close it and go for the next
 		if (dest_file->write_size == 0)
 			goto done;
 
 		/* Restore destination file */
-		if (dest_file->is_datafile && !dest_file->is_cfs)
+		if (dest_file->is_datafile)
 		{
 			/* enable stdio buffering for local destination data file */
 			if (!fio_is_remote_file(out))

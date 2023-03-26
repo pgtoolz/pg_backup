@@ -199,7 +199,6 @@ typedef enum ForkName
 	none,
 	vm,
 	fsm,
-	cfm,
 	init,
 	ptrack
 } ForkName;
@@ -234,7 +233,6 @@ typedef struct pgFile
 	ForkName   forkName;	/* forkName extracted from path, if applicable */
 	int		segno;			/* Segment number for ptrack */
 	int		n_blocks;		/* number of blocks in the data file in data directory */
-	bool	is_cfs;			/* Flag to distinguish files compressed by CFS*/
 	int		external_dir_num;	/* Number of external directory. 0 if not external */
 	bool	exists_in_prev;		/* Mark files, both data and regular, that exists in previous backup */
 	CompressAlg		compress_alg;		/* compression algorithm applied to the file */

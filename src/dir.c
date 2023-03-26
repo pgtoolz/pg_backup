@@ -1927,14 +1927,6 @@ set_forkname(pgFile *file)
 			return false;
 	}
 
-	/* CFS "fork name" */
-	if (file->forkName == none &&
-		is_forkname(file->name, &i, ".cfm"))
-	{
-		/* /^\d+(\.\d+)?.cfm$/ */
-		file->forkName = cfm;
-	}
-
 	/* If there are excess characters, it is not relation file */
 	if (file->name[i] != 0)
 	{
