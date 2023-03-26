@@ -83,7 +83,6 @@ typedef struct pg_indexEntry
 	char *name;
 	char *namespace;
 	bool heapallindexed_is_supported;
-	bool checkunique_is_supported;
 	/* schema where amcheck extension is located */
 	char *amcheck_nspname;
 	/* lock for synchronization of parallel threads  */
@@ -356,7 +355,6 @@ get_index_list(const char *dbname, bool first_db_with_amcheck,
 	char *amcheck_extversion = NULL;
 	int i;
 	bool heapallindexed_is_supported = false;
-	bool checkunique_is_supported = false;
 	parray *index_list = NULL;
 
 	/* Check amcheck extension version */
@@ -406,44 +404,6 @@ get_index_list(const char *dbname, bool first_db_with_amcheck,
 	if (!heapallindexed_is_supported && heapallindexed)
 		elog(WARNING, "Extension '%s' version %s in schema '%s'"
 					  "do not support 'heapallindexed' option",
-					   amcheck_extname, amcheck_extversion,
-					   amcheck_nspname);
-
-#ifndef PGPRO_EE
-	/*
-	 * Will support when the vanilla patch will commited https://commitfest.postgresql.org/32/2976/
-	 */
-	checkunique_is_supported = false;
-#else
-	/*
-	 * Check bt_index_check function signature to determine support of checkunique parameter
-	 * This can't be exactly checked by checking extension version,
-	 * For example, 1.1.1 and 1.2.1 supports this parameter, but 1.2 doesn't (PGPROEE-12.4.1)
-	 */
-	res = pgut_execute(db_conn, "SELECT "
-								"    oid "
-								"FROM pg_catalog.pg_proc "
-								"WHERE "
-								"    pronamespace = $1::regnamespace "
-								"AND proname = 'bt_index_check' "
-								"AND 'checkunique' = ANY(proargnames) "
-								"AND (pg_catalog.string_to_array(proargtypes::text, ' ')::regtype[])[pg_catalog.array_position(proargnames, 'checkunique')] = 'bool'::regtype",
-								1, (const char **) &amcheck_nspname);
-
-	if (PQresultStatus(res) != PGRES_TUPLES_OK)
-	{
-		PQclear(res);
-		elog(ERROR, "Cannot check 'checkunique' option is supported in bt_index_check function %s: %s",
-			dbname, PQerrorMessage(db_conn));
-	}
-
-	checkunique_is_supported = PQntuples(res) >= 1;
-	PQclear(res);
-#endif
-
-	if (!checkunique_is_supported && checkunique)
-		elog(WARNING, "Extension '%s' version %s in schema '%s' "
-					  "do not support 'checkunique' parameter",
 					   amcheck_extname, amcheck_extversion,
 					   amcheck_nspname);
 
@@ -506,7 +466,6 @@ get_index_list(const char *dbname, bool first_db_with_amcheck,
 		strcpy(ind->namespace, namespace);	/* enough buffer size guaranteed */
 
 		ind->heapallindexed_is_supported = heapallindexed_is_supported;
-		ind->checkunique_is_supported = checkunique_is_supported;
 		ind->amcheck_nspname = pgut_malloc(strlen(amcheck_nspname) + 1);
 		strcpy(ind->amcheck_nspname, amcheck_nspname);
 		pg_atomic_clear_flag(&ind->lock);
@@ -531,11 +490,10 @@ amcheck_one_index(check_indexes_arg *arguments,
 				 pg_indexEntry *ind)
 {
 	PGresult	*res;
-	char		*params[3];
+	char		*params[2];
 	static const char	*queries[] = {
 			"SELECT %s.bt_index_check(index => $1)",
 			"SELECT %s.bt_index_check(index => $1, heapallindexed => $2)",
-			"SELECT %s.bt_index_check(index => $1, heapallindexed => $2, checkunique => $3)",
 	};
 	int			params_count;
 	char		*query = NULL;
@@ -545,20 +503,14 @@ amcheck_one_index(check_indexes_arg *arguments,
 
 #define INDEXRELID 0
 #define HEAPALLINDEXED 1
-#define CHECKUNIQUE 2
 	/* first argument is index oid */
 	params[INDEXRELID] = palloc(64);
 	sprintf(params[INDEXRELID], "%u", ind->indexrelid);
 	/* second argument is heapallindexed */
 	params[HEAPALLINDEXED] = heapallindexed ? "true" : "false";
-	/* third optional argument is checkunique */
-	params[CHECKUNIQUE] = checkunique ? "true" : "false";
-#undef CHECKUNIQUE
 #undef HEAPALLINDEXED
 
-	params_count = ind->checkunique_is_supported ?
-			3 :
-			( ind->heapallindexed_is_supported ? 2 : 1 );
+	params_count = ind->heapallindexed_is_supported ? 2 : 1;
 
 	/*
 	 * Prepare query text with schema name
