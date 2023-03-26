@@ -57,7 +57,6 @@ static bool pg_is_in_recovery(PGconn *conn);
 static bool pg_is_superuser(PGconn *conn);
 static void check_server_version(PGconn *conn, PGNodeInfo *nodeInfo);
 static void confirm_block_size(PGconn *conn, const char *name, int blcksz);
-static void set_cfs_datafiles(parray *files, const char *root, char *relative, size_t i);
 
 static StopBackupCallbackParams stop_callback_params;
 
@@ -1935,7 +1934,7 @@ backup_files(void *arg)
 		}
 
 		/* backup file */
-		if (file->is_datafile && !file->is_cfs)
+		if (file->is_datafile)
 		{
 			backup_data_file(file, from_fullpath, to_fullpath,
 							 arguments->prev_start_lsn,
@@ -1989,34 +1988,6 @@ parse_filelist_filenames(parray *files, const char *root)
 	while (i < parray_num(files))
 	{
 		pgFile	   *file = (pgFile *) parray_get(files, i);
-		int 		sscanf_result;
-
-		if (S_ISREG(file->mode) &&
-			path_is_prefix_of_path(PG_TBLSPC_DIR, file->rel_path))
-		{
-			/*
-			 * Found file in pg_tblspc/tblsOid/TABLESPACE_VERSION_DIRECTORY
-			 * Legal only in case of 'pg_compression'
-			 */
-			if (strcmp(file->name, "pg_compression") == 0)
-			{
-				Oid			tblspcOid;
-				Oid			dbOid;
-				char		tmp_rel_path[MAXPGPATH];
-				/*
-				 * Check that the file is located under
-				 * TABLESPACE_VERSION_DIRECTORY
-				 */
-				sscanf_result = sscanf(file->rel_path, PG_TBLSPC_DIR "/%u/%s/%u",
-									   &tblspcOid, tmp_rel_path, &dbOid);
-
-				/* Yes, it is */
-				if (sscanf_result == 2 &&
-					strncmp(tmp_rel_path, TABLESPACE_VERSION_DIRECTORY,
-							strlen(TABLESPACE_VERSION_DIRECTORY)) == 0)
-					set_cfs_datafiles(files, root, file->rel_path, i);
-			}
-		}
 
 		if (S_ISREG(file->mode) && file->tblspcOid != 0 &&
 			file->name && file->name[0])
@@ -2051,57 +2022,6 @@ parse_filelist_filenames(parray *files, const char *root)
 
 		i++;
 	}
-}
-
-/* If file is equal to pg_compression, then we consider this tablespace as
- * cfs-compressed and should mark every file in this tablespace as cfs-file
- * Setting is_cfs is done via going back through 'files' set every file
- * that contain cfs_tablespace in his path as 'is_cfs'
- * Goings back through array 'files' is valid option possible because of current
- * sort rules:
- * tblspcOid/TABLESPACE_VERSION_DIRECTORY
- * tblspcOid/TABLESPACE_VERSION_DIRECTORY/dboid
- * tblspcOid/TABLESPACE_VERSION_DIRECTORY/dboid/1
- * tblspcOid/TABLESPACE_VERSION_DIRECTORY/dboid/1.cfm
- * tblspcOid/TABLESPACE_VERSION_DIRECTORY/pg_compression
- */
-static void
-set_cfs_datafiles(parray *files, const char *root, char *relative, size_t i)
-{
-	int			len;
-	int			p;
-	pgFile	   *prev_file;
-	char	   *cfs_tblspc_path;
-
-	cfs_tblspc_path = strdup(relative);
-	if(!cfs_tblspc_path)
-		elog(ERROR, "Out of memory");
-	len = strlen("/pg_compression");
-	cfs_tblspc_path[strlen(cfs_tblspc_path) - len] = 0;
-	elog(LOG, "CFS DIRECTORY %s, pg_compression path: %s", cfs_tblspc_path, relative);
-
-	for (p = (int) i; p >= 0; p--)
-	{
-		prev_file = (pgFile *) parray_get(files, (size_t) p);
-
-		elog(LOG, "Checking file in cfs tablespace %s", prev_file->rel_path);
-
-		if (strstr(prev_file->rel_path, cfs_tblspc_path) != NULL)
-		{
-			if (S_ISREG(prev_file->mode) && prev_file->is_datafile)
-			{
-				elog(LOG, "Setting 'is_cfs' on file %s, name %s",
-					prev_file->rel_path, prev_file->name);
-				prev_file->is_cfs = true;
-			}
-		}
-		else
-		{
-			elog(LOG, "Breaking on %s", prev_file->rel_path);
-			break;
-		}
-	}
-	free(cfs_tblspc_path);
 }
 
 /*

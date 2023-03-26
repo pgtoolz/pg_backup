@@ -323,13 +323,11 @@ pgBackupValidateFiles(void *arg)
 		/*
 		 * If option skip-block-validation is set, compute only file-level CRC for
 		 * datafiles, otherwise check them block by block.
-		 * Currently we don't compute checksums for
-		 * cfs_compressed data files, so skip block validation for them.
 		 */
-		if (!file->is_datafile || skip_block_validation || file->is_cfs)
+		if (!file->is_datafile || skip_block_validation)
 		{
 			/*
-			 * Pre 2.0.22 we use CRC-32C, but in newer version of pg_probackup we
+			 * Pre 2.0.22 we use CRC-32C, but in newer version of pg_backup we
 			 * use CRC-32.
 			 *
 			 * pg_control stores its content and checksum of the content, calculated

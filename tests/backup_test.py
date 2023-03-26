@@ -1413,6 +1413,9 @@ class BackupTest(ProbackupTest, unittest.TestCase):
             backup_dir, 'node', node,
             options=['--stream', '--temp-slot'])
 
+        print(backup_dir)
+        exit(1)
+
         # FULL backup
         self.backup_node(
             backup_dir, 'node', node,

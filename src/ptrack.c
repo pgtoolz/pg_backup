@@ -282,7 +282,7 @@ make_pagemap_from_ptrack_2(parray *files,
 		 * TODO It's possible to use ptrack for incremental backup of
 		 * relation forks. Not implemented yet.
 		 */
-		if (!file->is_datafile || file->is_cfs)
+		if (!file->is_datafile)
 			continue;
 
 		/* Consider only files from PGDATA (this check is probably redundant) */

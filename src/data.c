@@ -1209,8 +1209,7 @@ restore_data_file_internal(FILE *in, FILE *out, pgFile *file, uint32 backup_vers
 
 /*
  * Copy file to backup.
- * We do not apply compression to these files, because
- * it is either small control file or already compressed cfs file.
+ * We do not apply compression to these files, because they are small-sized.
  */
 void
 restore_non_data_file_internal(FILE *in, FILE *out, pgFile *file,
@@ -1380,8 +1379,7 @@ restore_non_data_file(parray *parent_chain, pgBackup *dest_backup,
 
 /*
  * Copy file to backup.
- * We do not apply compression to these files, because
- * it is either small control file or already compressed cfs file.
+ * We do not apply compression to these files, because they are small-sized.
  * TODO: optimize remote copying
  */
 void
