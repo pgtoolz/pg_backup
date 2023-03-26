@@ -796,7 +796,6 @@ extern ShowFormat show_format;
 
 /* checkdb options */
 extern bool heapallindexed;
-extern bool checkunique;
 extern bool skip_block_validation;
 
 /* current settings */
