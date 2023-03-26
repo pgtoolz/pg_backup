@@ -89,10 +89,7 @@ extern const char  *PROGRAM_EMAIL;
 #define DIR_PERMISSION		(0700)
 #define FILE_PERMISSION		(0600)
 
-/* 64-bit xid support for PGPRO_EE */
-#ifndef PGPRO_EE
 #define XID_FMT "%u"
-#endif
 
 #ifndef STDIN_FILENO
 #define STDIN_FILENO 0
@@ -386,7 +383,6 @@ typedef struct PGNodeInfo
 	uint32			wal_block_size;
 	uint32			checksum_version;
 	bool			is_superuser;
-	bool			pgpro_support;
 
 	int				server_version;
 	char			server_version_str[100];
