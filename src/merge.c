@@ -940,7 +940,6 @@ merge_files(void *arg)
 		tmp_file = pgFileInit(dest_file->rel_path);
 		tmp_file->mode = dest_file->mode;
 		tmp_file->is_datafile = dest_file->is_datafile;
-		tmp_file->is_cfs = dest_file->is_cfs;
 		tmp_file->external_dir_num = dest_file->external_dir_num;
 		tmp_file->dbOid = dest_file->dbOid;
 
@@ -951,13 +950,13 @@ merge_files(void *arg)
 		elog(progress ? INFO : LOG, "Progress: (%d/%lu). Merging file \"%s\"",
 			i + 1, n_files, dest_file->rel_path);
 
-		if (dest_file->is_datafile && !dest_file->is_cfs)
+		if (dest_file->is_datafile)
 			tmp_file->segno = dest_file->segno;
 
 		// If destination file is 0 sized, then go for the next
 		if (dest_file->write_size == 0)
 		{
-			if (!dest_file->is_datafile || dest_file->is_cfs)
+			if (!dest_file->is_datafile)
 				tmp_file->crc = dest_file->crc;
 
 			tmp_file->write_size = 0;
@@ -1060,7 +1059,7 @@ merge_files(void *arg)
 				tmp_file->crc = file->crc;
 				tmp_file->write_size = file->write_size;
 
-				if (dest_file->is_datafile && !dest_file->is_cfs)
+				if (dest_file->is_datafile)
 				{
 					tmp_file->n_blocks = file->n_blocks;
 					tmp_file->compress_alg = file->compress_alg;
@@ -1090,7 +1089,7 @@ merge_files(void *arg)
 			}
 		}
 
-		if (dest_file->is_datafile && !dest_file->is_cfs)
+		if (dest_file->is_datafile)
 			merge_data_file(arguments->parent_chain,
 							arguments->full_backup,
 							arguments->dest_backup,

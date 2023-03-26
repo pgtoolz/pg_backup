@@ -1081,7 +1081,6 @@ get_backup_filelist(pgBackup *backup, bool strict)
 					full_size,
 					mode,		/* bit length of mode_t depends on platforms */
 					is_datafile,
-					is_cfs,
 					external_dir_num,
 					crc,
 					segno,
@@ -1101,7 +1100,6 @@ get_backup_filelist(pgBackup *backup, bool strict)
 			full_size = write_size;
 		get_control_value_int64(buf, "mode", &mode, true);
 		get_control_value_int64(buf, "is_datafile", &is_datafile, true);
-		get_control_value_int64(buf, "is_cfs", &is_cfs, false);
 		get_control_value_int64(buf, "crc", &crc, true);
 		get_control_value_str(buf, "compress_alg", compress_alg_string, sizeof(compress_alg_string), false);
 		get_control_value_int64(buf, "external_dir_num", &external_dir_num, false);
@@ -1112,7 +1110,6 @@ get_backup_filelist(pgBackup *backup, bool strict)
 		file->uncompressed_size = full_size;
 		file->mode = (mode_t) mode;
 		file->is_datafile = is_datafile ? true : false;
-		file->is_cfs = is_cfs ? true : false;
 		file->crc = (pg_crc32) crc;
 		file->compress_alg = parse_compress_alg(compress_alg_string);
 		file->external_dir_num = external_dir_num;
@@ -1145,7 +1142,7 @@ get_backup_filelist(pgBackup *backup, bool strict)
 		if (get_control_value_int64(buf, "hdr_size", &hdr_size, false))
 			file->hdr_size = (int) hdr_size;
 
-		if (!file->is_datafile || file->is_cfs)
+		if (!file->is_datafile)
 			file->size = file->uncompressed_size;
 
 		if (file->external_dir_num == 0 && S_ISREG(file->mode))
@@ -2575,12 +2572,11 @@ write_backup_filelist(pgBackup *backup, parray *files, const char *root,
 
 		len = sprintf(line, "{\"path\":\"%s\", \"size\":\"" INT64_FORMAT "\", "
 					 "\"mode\":\"%u\", \"is_datafile\":\"%u\", "
-					 "\"is_cfs\":\"%u\", \"crc\":\"%u\", "
+					 "\"crc\":\"%u\", "
 					 "\"compress_alg\":\"%s\", \"external_dir_num\":\"%d\", "
 					 "\"dbOid\":\"%u\"",
 					file->rel_path, file->write_size, file->mode,
 					file->is_datafile ? 1 : 0,
-					file->is_cfs ? 1 : 0,
 					file->crc,
 					deparse_compress_alg(file->compress_alg),
 					file->external_dir_num,

@@ -420,7 +420,7 @@ catchup_thread_runner(void *arg)
 		}
 
 		/* Do actual work */
-		if (file->is_datafile && !file->is_cfs)
+		if (file->is_datafile)
 		{
 			catchup_data_file(file, from_fullpath, to_fullpath,
 								 arguments->sync_lsn,

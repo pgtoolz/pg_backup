@@ -163,8 +163,8 @@ check_files(void *arg)
 
 		if (S_ISREG(file->mode))
 		{
-			/* check only uncompressed by cfs datafiles */
-			if (file->is_datafile && !file->is_cfs)
+			/* check datafiles */
+			if (file->is_datafile)
 			{
 				/*
 				 * TODO deep inside check_data_file
