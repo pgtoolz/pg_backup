@@ -1274,7 +1274,7 @@ class MergeTest(ProbackupTest, unittest.TestCase):
         # DELTA BACKUP
         self.backup_node(
             backup_dir, 'node', node,
-            backup_type='delta', options=['--compress-algorithm=pglz'])
+            backup_type='delta', options=['--compress-algorithm=none'])
 
         node.safe_psql(
             "postgres",

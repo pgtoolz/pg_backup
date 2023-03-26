@@ -850,10 +850,6 @@ main(int argc, char *argv[])
 		if (instance_config.pgdata == NULL)
 			elog(ERROR, "Cannot read pg_probackup.conf for this instance");
 
-		/* TODO may be remove in preference of checking inside compress_init()? */
-		if (instance_config.compress_alg == PGLZ_COMPRESS)
-                        elog(ERROR, "Cannot use pglz for WAL compression");
-
 		if (!getcwd(current_dir, sizeof(current_dir)))
 			elog(ERROR, "getcwd() error");
 
@@ -1118,17 +1114,6 @@ compress_init(ProbackupSubcmd const subcmd)
 
 	if (instance_config.compress_alg == ZLIB_COMPRESS && instance_config.compress_level == 0)
 		elog(WARNING, "Compression level 0 will lead to data bloat!");
-
-	if (subcmd == BACKUP_CMD || subcmd == ARCHIVE_PUSH_CMD)
-	{
-#ifndef HAVE_LIBZ
-		if (instance_config.compress_alg == ZLIB_COMPRESS)
-			elog(ERROR, "This build does not support zlib compression");
-		else
-#endif
-		if (instance_config.compress_alg == PGLZ_COMPRESS && num_threads > 1)
-			elog(ERROR, "Multithread backup does not support pglz compression");
-	}
 }
 
 static void

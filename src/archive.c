@@ -16,20 +16,16 @@
 static int push_file_internal_uncompressed(const char *wal_file_name, const char *pg_xlog_dir,
 								  const char *archive_dir, bool overwrite, bool no_sync,
 								  uint32 archive_timeout);
-#ifdef HAVE_LIBZ
 static int push_file_internal_gz(const char *wal_file_name, const char *pg_xlog_dir,
 									 const char *archive_dir, bool overwrite, bool no_sync,
 									 int compress_level, uint32 archive_timeout);
-#endif
 static void *push_files(void *arg);
 static void *get_files(void *arg);
 static bool get_wal_file(const char *filename, const char *from_path, const char *to_path,
 													bool prefetch_mode);
 static int get_wal_file_internal(const char *from_path, const char *to_path, FILE *out,
 								 bool is_decompress);
-#ifdef HAVE_LIBZ
 static const char *get_gz_error(gzFile gzf, int errnum);
-#endif
 //static void copy_file_attributes(const char *from_path,
 //								 fio_location from_location,
 //								 const char *to_path, fio_location to_location,
@@ -142,10 +138,8 @@ do_archive_push(InstanceState *instanceState, InstanceConfig *instance, char *pg
 	if (!no_ready_rename || batch_size > 1)
 		join_path_components(archive_status_dir, pg_xlog_dir, "archive_status");
 
-#ifdef HAVE_LIBZ
 	if (instance->compress_alg == ZLIB_COMPRESS)
 		is_compress = true;
-#endif
 
 	/*  Setup filelist and locks */
 	batch_files = setup_push_filelist(archive_status_dir, wal_file_name, batch_size);
@@ -340,12 +334,10 @@ push_file(WALSegno *xlogfile, const char *archive_status_dir,
 		rc = push_file_internal_uncompressed(xlogfile->name, pg_xlog_dir,
 											 archive_dir, overwrite, no_sync,
 											 archive_timeout);
-#ifdef HAVE_LIBZ
 	else
 		rc = push_file_internal_gz(xlogfile->name, pg_xlog_dir, archive_dir,
 								   overwrite, no_sync, compress_level,
 								   archive_timeout);
-#endif
 
 	/* take '--no-ready-rename' flag into account */
 	if (!no_ready_rename && archive_status_dir != NULL)
@@ -623,7 +615,6 @@ part_opened:
 	return 0;
 }
 
-#ifdef HAVE_LIBZ
 /*
  * Push WAL segment into archive and apply streaming compression to it.
  * Returns:
@@ -884,9 +875,7 @@ part_opened:
 
 	return 0;
 }
-#endif
 
-#ifdef HAVE_LIBZ
 /*
  * Show error during work with compressed file
  */
@@ -902,7 +891,6 @@ get_gz_error(gzFile gzf, int errnum)
 	else
 		return errmsg;
 }
-#endif
 
 /* Copy file attributes */
 //static void
@@ -1396,12 +1384,10 @@ get_wal_file(const char *filename, const char *from_fullpath,
 	{
 		char *errmsg = NULL;
 		/* get file via ssh */
-#ifdef HAVE_LIBZ
 		/* If requested file is regular WAL segment, then try to open it with '.gz' suffix... */
 		if (IsXLogFileName(filename))
 			rc = fio_send_file_gz(from_fullpath_gz, to_fullpath, out, &errmsg);
 		if (rc == FILE_MISSING)
-#endif
 			/* ... failing that, use uncompressed */
 			rc = fio_send_file(from_fullpath, to_fullpath, out, NULL, &errmsg);
 
@@ -1409,13 +1395,10 @@ get_wal_file(const char *filename, const char *from_fullpath,
 		if (rc == FILE_MISSING && !prefetch_mode && IsXLogFileName(filename))
 		{
 			char    from_partial[MAXPGPATH];
-
-#ifdef HAVE_LIBZ
 			/* '.gz.partial' goes first ... */
 			snprintf(from_partial, sizeof(from_partial), "%s.gz.partial", from_fullpath);
 			rc = fio_send_file_gz(from_partial, to_fullpath, out, &errmsg);
 			if (rc == FILE_MISSING)
-#endif
 			{
 				/* ... failing that, use '.partial' */
 				snprintf(from_partial, sizeof(from_partial), "%s.partial", from_fullpath);
@@ -1438,12 +1421,10 @@ get_wal_file(const char *filename, const char *from_fullpath,
 	else
 	{
 		/* get file locally */
-#ifdef HAVE_LIBZ
 		/* If requested file is regular WAL segment, then try to open it with '.gz' suffix... */
 		if (IsXLogFileName(filename))
 			rc = get_wal_file_internal(from_fullpath_gz, to_fullpath, out, true);
 		if (rc == FILE_MISSING)
-#endif
 			/* ... failing that, use uncompressed */
 			rc = get_wal_file_internal(from_fullpath, to_fullpath, out, false);
 
@@ -1452,12 +1433,10 @@ get_wal_file(const char *filename, const char *from_fullpath,
 		{
 			char    from_partial[MAXPGPATH];
 
-#ifdef HAVE_LIBZ
 			/* '.gz.partial' goes first ... */
 			snprintf(from_partial, sizeof(from_partial), "%s.gz.partial", from_fullpath);
 			rc = get_wal_file_internal(from_partial, to_fullpath, out, true);
 			if (rc == FILE_MISSING)
-#endif
 			{
 				/* ... failing that, use '.partial' */
 				snprintf(from_partial, sizeof(from_partial), "%s.partial", from_fullpath);
@@ -1528,9 +1507,7 @@ int
 get_wal_file_internal(const char *from_path, const char *to_path, FILE *out,
 					  bool is_decompress)
 {
-#ifdef HAVE_LIBZ
 	gzFile   gz_in = NULL;
-#endif
 	FILE    *in = NULL;
 	char    *buf = pgut_malloc(OUT_BUF_SIZE); /* 1MB buffer */
 	int      exit_code = 0;
@@ -1558,7 +1535,6 @@ get_wal_file_internal(const char *from_path, const char *to_path, FILE *out,
 		/* disable stdio buffering */
 		setvbuf(out, NULL, _IONBF, BUFSIZ);
 	}
-#ifdef HAVE_LIBZ
 	else
 	{
 		gz_in = gzopen(from_path, PG_BINARY_R);
@@ -1576,14 +1552,12 @@ get_wal_file_internal(const char *from_path, const char *to_path, FILE *out,
 			goto cleanup;
 		}
 	}
-#endif
 
 	/* copy content */
 	for (;;)
 	{
 		int read_len = 0;
 
-#ifdef HAVE_LIBZ
 		if (is_decompress)
 		{
 			read_len = gzread(gz_in, buf, OUT_BUF_SIZE);
@@ -1602,7 +1576,6 @@ get_wal_file_internal(const char *from_path, const char *to_path, FILE *out,
 			}
 		}
 		else
-#endif
 		{
 			read_len = fread(buf, 1, OUT_BUF_SIZE, in);
 
@@ -1631,10 +1604,8 @@ get_wal_file_internal(const char *from_path, const char *to_path, FILE *out,
 	}
 
 cleanup:
-#ifdef HAVE_LIBZ
 	if (gz_in)
 		gzclose(gz_in);
-#endif
 	if (in)
 		fclose(in);
 

@@ -17,10 +17,7 @@
 
 #include <unistd.h>
 #include <sys/stat.h>
-
-#ifdef HAVE_LIBZ
 #include <zlib.h>
-#endif
 
 #include "utils/thread.h"
 
@@ -37,7 +34,6 @@ typedef struct DataPage
 static bool get_page_header(FILE *in, const char *fullpath, BackupPageHeader *bph,
 							pg_crc32 *crc, uint32 backup_version);
 
-#ifdef HAVE_LIBZ
 /* Implementation of zlib compression method */
 static int32
 zlib_compress(void *dst, size_t dst_size, void const *src, size_t src_size,
@@ -59,7 +55,6 @@ zlib_decompress(void *dst, size_t dst_size, void const *src, size_t src_size)
 
 	return rc == Z_OK ? dest_len : rc;
 }
-#endif
 
 /*
  * Compresses source into dest using algorithm. Returns the number of bytes
@@ -74,7 +69,6 @@ do_compress(void *dst, size_t dst_size, void const *src, size_t src_size,
 		case NONE_COMPRESS:
 		case NOT_DEFINED_COMPRESS:
 			return -1;
-#ifdef HAVE_LIBZ
 		case ZLIB_COMPRESS:
 		{
 			int32 ret;
@@ -83,9 +77,6 @@ do_compress(void *dst, size_t dst_size, void const *src, size_t src_size,
 				*errormsg = zError(ret);
 			return ret;
 		}
-#endif
-		case PGLZ_COMPRESS:
-			return pglz_compress(src, src_size, dst, PGLZ_strategy_always);
 	}
 
 	return -1;
@@ -106,7 +97,6 @@ do_decompress(void *dst, size_t dst_size, void const *src, size_t src_size,
 			if (errormsg)
 				*errormsg = "Invalid compression algorithm";
 			return -1;
-#ifdef HAVE_LIBZ
 		case ZLIB_COMPRESS:
 		{
 			int32 ret;
@@ -115,14 +105,6 @@ do_decompress(void *dst, size_t dst_size, void const *src, size_t src_size,
 				*errormsg = zError(ret);
 			return ret;
 		}
-#endif
-		case PGLZ_COMPRESS:
-
-#if PG_VERSION_NUM >= 120000
-			return pglz_decompress(src, src_size, dst, dst_size, true);
-#else
-			return pglz_decompress(src, src_size, dst, dst_size);
-#endif
 	}
 
 	return -1;
@@ -131,6 +113,7 @@ do_decompress(void *dst, size_t dst_size, void const *src, size_t src_size,
 #define ZLIB_MAGIC 0x78
 
 /*
+ * TODO: we probably can drop it
  * Before version 2.0.23 there was a bug in pro_backup that pages which compressed
  * size is exactly the same as original size are not treated as compressed.
  * This check tries to detect and decompress such pages.
@@ -160,7 +143,6 @@ page_may_be_compressed(Page page, CompressAlg alg, uint32 backup_version)
 			/* Versions 2.0.23 and higher don't have such bug */
 			return false;
 		}
-#ifdef HAVE_LIBZ
 		/* For zlib we can check page magic:
 		 * https://stackoverflow.com/questions/9050260/what-does-a-zlib-header-look-like
 		 */
@@ -168,7 +150,6 @@ page_may_be_compressed(Page page, CompressAlg alg, uint32 backup_version)
 		{
 			return false;
 		}
-#endif
 		/* otherwise let's try to decompress the page */
 		return true;
 	}
