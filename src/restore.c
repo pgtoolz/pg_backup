@@ -1904,11 +1904,7 @@ parseRecoveryTargetOptions(const char *target_time,
 		recovery_target_specified++;
 		rt->xid_string = target_xid;
 
-#ifdef PGPRO_EE
-		if (parse_uint64(target_xid, &dummy_xid, 0))
-#else
 		if (parse_uint32(target_xid, &dummy_xid, 0))
-#endif
 			rt->target_xid = dummy_xid;
 		else
 			elog(ERROR, "Invalid value for '--recovery-target-xid' option '%s'",

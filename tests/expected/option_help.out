@@ -111,7 +111,7 @@ pg_backup - utility to manage backup/recovery of PostgreSQL database.
   pg_backup checkdb [-B backup-path] [--instance=instance_name]
                  [-D pgdata-path] [--progress] [-j num-threads]
                  [--amcheck] [--skip-block-validation]
-                 [--heapallindexed] [--checkunique]
+                 [--heapallindexed]
                  [--help]
 
   pg_backup show -B backup-path

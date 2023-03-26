@@ -34,14 +34,8 @@ static void help_catchup(void);
 void
 help_print_version(void)
 {
-#ifdef PGPRO_VERSION
-	fprintf(stdout, "%s %s (Postgres Pro %s %s)\n",
-			PROGRAM_NAME, PROGRAM_VERSION,
-			PGPRO_VERSION, PGPRO_EDITION);
-#else
 	fprintf(stdout, "%s %s (PostgreSQL %s)\n",
 			PROGRAM_NAME, PROGRAM_VERSION, PG_VERSION);
-#endif
 }
 
 void
