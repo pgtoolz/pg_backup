@@ -846,10 +846,6 @@ extern bool tliIsPartOfHistory(const parray *timelines, TimeLineID tli);
 extern DestDirIncrCompatibility check_incremental_compatibility(const char *pgdata, uint64 system_identifier,
 																IncrRestoreMode incremental_mode);
 
-/* in remote.c */
-extern void check_remote_agent_compatibility(int agent_version, char *compatibility_str);
-extern size_t prepare_remote_agent_compatibility_str(char* compatibility_buf, size_t buf_size);
-
 /* in merge.c */
 extern void do_merge(InstanceState *instanceState, time_t backup_id, bool no_validate, bool no_sync);
 extern void merge_backups(pgBackup *backup, pgBackup *next_backup);

@@ -87,9 +87,6 @@ bool launch_agent(void)
 	int infd[2];
 	int errfd[2];
 	int agent_version;
-	//TODO REVIEW XXX review buf_size
-	size_t payload_buf_size = 1024 * 8;
-	char payload_buf[payload_buf_size];
 
 	ssh_argc = 0;
 	ssh_argv[ssh_argc++] = instance_config.remote.proto;
@@ -179,31 +176,10 @@ bool launch_agent(void)
 		fio_redirect(infd[0], outfd[1], errfd[0]); /* write to stdout */
 	}
 
-	/* Make sure that remote agent has the same version, fork and other features to be binary compatible
+	/* Make sure that remote agent has the same version
+	 * TODO: we must also check PG version and fork edition
 	 */
-	fio_get_agent_version(&agent_version, payload_buf, payload_buf_size);
-	check_remote_agent_compatibility(0, payload_buf);
-
-	return true;
-}
-
-//TODO REVIEW XXX review macro
-#define STR(macro) #macro
-size_t prepare_remote_agent_compatibility_str(char* compatibility_buf, size_t buf_size)
-{
-	size_t payload_size = snprintf(compatibility_buf, buf_size,
-								   "%s\n%s\n%s\n%s\n",
-								   STR(PG_MAJORVERSION), PG_MAJORVERSION,
-								   STR(PGPRO_EDN), PGPRO_EDN);
-	if (payload_size >= buf_size)
-	{
-		elog(ERROR, "TODO REVIEW XXX too bad message buffer exhaust");
-	}
-	return payload_size + 1;
-}
-
-void check_remote_agent_compatibility(int agent_version, char *compatibility_str)
-{
+	agent_version = fio_get_agent_version();
 	if (agent_version != AGENT_PROTOCOL_VERSION)
 	{
 		char agent_version_str[1024];
@@ -216,6 +192,6 @@ void check_remote_agent_compatibility(int agent_version, char *compatibility_str
 					"consider to upgrade %s binary",
 			agent_version_str, AGENT_PROTOCOL_VERSION_STR, PROGRAM_NAME);
 	}
-	assert(false);
-	elog(ERROR, " check_remote_agent_compatibility() not implemented");
+
+	return true;
 }
