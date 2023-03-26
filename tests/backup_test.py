@@ -1,7 +1,7 @@
 import unittest
 import os
 import re
-from time import sleep
+from time import sleep, time
 from .helpers.ptrack_helpers import ProbackupTest, ProbackupException
 import shutil
 from distutils.dir_util import copy_tree
