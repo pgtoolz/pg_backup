@@ -17,10 +17,7 @@
 #include "commands/dbcommands_xlog.h"
 #include "catalog/storage_xlog.h"
 
-#ifdef HAVE_LIBZ
 #include <zlib.h>
-#endif
-
 #include "utils/thread.h"
 #include <unistd.h>
 #include <time.h>
@@ -111,10 +108,8 @@ typedef struct XLogReaderData
 	int			xlogfile;
 	char		xlogpath[MAXPGPATH];
 
-#ifdef HAVE_LIBZ
 	gzFile		 gz_xlogfile;
 	char		 gz_xlogpath[MAXPGPATH];
-#endif
 } XLogReaderData;
 
 /* Function to process a WAL record */
@@ -924,7 +919,6 @@ get_prior_record_lsn(const char *archivedir, XLogRecPtr start_lsn,
 	return res;
 }
 
-#ifdef HAVE_LIBZ
 /*
  * Show error during work with compressed file
  */
@@ -940,7 +934,6 @@ get_gz_error(gzFile gzf)
 	else
 		return errmsg;
 }
-#endif
 
 /* XLogreader callback function, to read a WAL page */
 static int
@@ -1047,7 +1040,6 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 				return -1;
 			}
 		}
-#ifdef HAVE_LIBZ
 		/* Try to open compressed WAL segment */
 		else if (fileExists(reader_data->gz_xlogpath, FIO_LOCAL_HOST))
 		{
@@ -1065,7 +1057,6 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 				return -1;
 			}
 		}
-#endif
 		/* Exit without error if WAL segment doesn't exist */
 		if (!reader_data->xlogexists)
 			return -1;
@@ -1106,7 +1097,6 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 			return -1;
 		}
 	}
-#ifdef HAVE_LIBZ
 	else
 	{
 		if (fio_gzseek(reader_data->gz_xlogfile, (z_off_t) targetPageOff, SEEK_SET) == -1)
@@ -1125,7 +1115,6 @@ SimpleXLogPageRead(XLogReaderState *xlogreader, XLogRecPtr targetPagePtr,
 			return -1;
 		}
 	}
-#endif
 
 	memcpy(reader_data->page_buf, readBuf, XLOG_BLCKSZ);
 	reader_data->prev_page_off = targetPageOff;
@@ -1720,13 +1709,11 @@ CleanupXLogPageRead(XLogReaderState *xlogreader)
 		fio_close(reader_data->xlogfile);
 		reader_data->xlogfile = -1;
 	}
-#ifdef HAVE_LIBZ
 	else if (reader_data->gz_xlogfile != NULL)
 	{
 		fio_gzclose(reader_data->gz_xlogfile);
 		reader_data->gz_xlogfile = NULL;
 	}
-#endif
 	reader_data->prev_page_off = 0;
 	reader_data->xlogexists = false;
 }
@@ -1747,12 +1734,10 @@ PrintXLogCorruptionMsg(XLogReaderData *reader_data, int elevel)
 			elog(elevel, "Thread [%d]: Possible WAL corruption. "
 						 "Error has occured during reading WAL segment \"%s\"",
 				 reader_data->thread_num, reader_data->xlogpath);
-#ifdef HAVE_LIBZ
 		else if (reader_data->gz_xlogfile != NULL)
 			elog(elevel, "Thread [%d]: Possible WAL corruption. "
 						 "Error has occured during reading WAL segment \"%s\"",
 				 reader_data->thread_num, reader_data->gz_xlogpath);
-#endif
 	}
 	else
 	{

@@ -189,7 +189,6 @@ typedef enum CompressAlg
 {
 	NOT_DEFINED_COMPRESS = 0,
 	NONE_COMPRESS,
-	PGLZ_COMPRESS,
 	ZLIB_COMPRESS,
 } CompressAlg;
 

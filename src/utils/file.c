@@ -1514,8 +1514,6 @@ fio_chmod(fio_location location, const char* path, int mode)
 	}
 }
 
-#ifdef HAVE_LIBZ
-
 #define ZLIB_BUFFER_SIZE     (64*1024)
 #define MAX_WBITS            15 /* 32K LZ77 window */
 #define DEF_MEM_LEVEL        8
@@ -1823,9 +1821,6 @@ fio_gzseek(gzFile f, z_off_t offset, int whence)
 	Assert(!((size_t)f & FIO_GZ_REMOTE_MARKER));
 	return gzseek(f, offset, whence);
 }
-
-
-#endif
 
 /* Send file content
  * Note: it should not be used for large files.

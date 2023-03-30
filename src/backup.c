@@ -1086,10 +1086,7 @@ wait_wal_lsn(const char *wal_segment_dir, XLogRecPtr target_lsn, bool is_start_l
 	uint32		try_count = 0,
 				timeout;
 	char		*wal_delivery_str = in_stream_dir ? "streamed":"archived";
-
-#ifdef HAVE_LIBZ
 	char		gz_wal_segment_path[MAXPGPATH];
-#endif
 
 	/* Compute the name of the WAL file containing requested LSN */
 	GetXLogSegNo(target_lsn, targetSegNo, instance_config.xlog_seg_size);
@@ -1119,10 +1116,8 @@ wait_wal_lsn(const char *wal_segment_dir, XLogRecPtr target_lsn, bool is_start_l
 		elog(LOG, "Looking for LSN %X/%X in segment: %s",
 			 (uint32) (target_lsn >> 32), (uint32) target_lsn, wal_segment);
 
-#ifdef HAVE_LIBZ
 	snprintf(gz_wal_segment_path, sizeof(gz_wal_segment_path), "%s.gz",
 			 wal_segment_path);
-#endif
 
 	/* Wait until target LSN is archived or streamed */
 	while (true)
@@ -1134,11 +1129,9 @@ wait_wal_lsn(const char *wal_segment_dir, XLogRecPtr target_lsn, bool is_start_l
 			/* Try to find compressed WAL file */
 			if (!file_exists)
 			{
-#ifdef HAVE_LIBZ
 				file_exists = fileExists(gz_wal_segment_path, FIO_BACKUP_HOST);
 				if (file_exists)
 					elog(LOG, "Found compressed WAL segment: %s", wal_segment_path);
-#endif
 			}
 			else
 				elog(LOG, "Found WAL segment: %s", wal_segment_path);
