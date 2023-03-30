@@ -938,7 +938,7 @@ msgstr ""
 
 #: src/help.c:393
 #, c-format
-msgid "                                   available options: 'zlib', 'pglz', 'none' (default: none)\n"
+msgid "                                   available options: 'zlib', 'none' (default: none)\n"
 msgstr ""
 
 #: src/help.c:394 src/help.c:853 src/help.c:971
@@ -1586,7 +1586,7 @@ msgstr ""
 
 #: src/help.c:852 src/help.c:970
 #, c-format
-msgid "                                   available options: 'zlib','pglz','none' (default: 'none')\n"
+msgid "                                   available options: 'zlib','none' (default: 'none')\n"
 msgstr ""
 
 #: src/help.c:879

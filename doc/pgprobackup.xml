@@ -2344,7 +2344,7 @@ primary_conninfo = 'user=backup passfile=/var/lib/pgsql/.pgpass port=5432 sslmod
         <listitem>
         <para>
           <literal>compress-alg</literal> — compression algorithm used during backup. Possible values:
-          <literal>zlib</literal>, <literal>pglz</literal>, <literal>none</literal>.
+          <literal>zlib</literal>, <literal>none</literal>.
         </para>
         </listitem>
         <listitem>
@@ -5180,12 +5180,9 @@ pg_backup catchup -b <replaceable>catchup_mode</replaceable>
       <listitem>
       <para>
         Defines the algorithm to use for compressing data files.
-        Possible values are <literal>zlib</literal>,
-        <literal>pglz</literal>, and <literal>none</literal>. If set
-        to <literal>zlib</literal> or <literal>pglz</literal>, this option enables compression. By default,
-        compression is disabled. For the
-        <xref linkend="pbk-archive-push"/> command, the
-        <literal>pglz</literal> compression algorithm is not supported.
+        Possible values are <literal>zlib</literal> and <literal>none</literal>. If set
+        to <literal>zlib</literal>, this option enables compression. By default,
+        compression is disabled.
       </para>
       <para>
        Default: <literal>none</literal>
