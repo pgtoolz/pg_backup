@@ -396,7 +396,6 @@ catchup_thread_runner(void *arg)
 			 i + 1, n_files, file->rel_path);
 
 		/* construct destination filepath */
-		Assert(file->external_dir_num == 0);
 		join_path_components(from_fullpath, arguments->from_root, file->rel_path);
 		join_path_components(to_fullpath, arguments->to_root, file->rel_path);
 
@@ -410,7 +409,7 @@ catchup_thread_runner(void *arg)
 		{
 			pgFile	**dest_file_tmp = NULL;
 			dest_file_tmp = (pgFile **) parray_bsearch(arguments->dest_filelist,
-											file, pgFileCompareRelPathWithExternal);
+											file, pgFileCompareRelPath);
 			if (dest_file_tmp)
 			{
 				/* File exists in destination PGDATA */
@@ -550,7 +549,6 @@ catchup_sync_destination_files(const char* pgdata_path, fio_location location, p
 		if (S_ISDIR(file->mode) || file->excluded)
 			continue;
 
-		Assert(file->external_dir_num == 0);
 		join_path_components(fullpath, pgdata_path, file->rel_path);
 		if (fio_sync(location, fullpath) != 0)
 			elog(ERROR, "Cannot sync file \"%s\": %s", fullpath, strerror(errno));
@@ -649,7 +647,7 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 	{
 		dest_filelist = parray_new();
 		dir_list_file(dest_filelist, dest_pgdata,
-			true, true, false, backup_logs, true, 0, FIO_LOCAL_HOST);
+			true, true, false, backup_logs, true, FIO_LOCAL_HOST);
 		filter_filelist(dest_filelist, dest_pgdata, exclude_absolute_paths_list, exclude_relative_paths_list, "Destination");
 
 		// fill dest_redo.lsn and dest_redo.tli
@@ -717,10 +715,10 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 	/* list files with the logical path. omit $PGDATA */
 	if (fio_is_remote(FIO_DB_HOST))
 		fio_list_dir(source_filelist, source_pgdata,
-					 true, true, false, backup_logs, true, 0);
+					 true, true, false, backup_logs, true);
 	else
 		dir_list_file(source_filelist, source_pgdata,
-					  true, true, false, backup_logs, true, 0, FIO_LOCAL_HOST);
+					  true, true, false, backup_logs, true, FIO_LOCAL_HOST);
 
 	//REVIEW FIXME. Let's fix that before release.
 	// TODO what if wal is not a dir (symlink to a dir)?
@@ -744,7 +742,7 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 	 * Sorted array is used at least in parse_filelist_filenames(),
 	 * extractPageMap(), make_pagemap_from_ptrack().
 	 */
-	parray_qsort(source_filelist, pgFileCompareRelPathWithExternal);
+	parray_qsort(source_filelist, pgFileCompareRelPath);
 
 	//REVIEW Do we want to do similar calculation for dest?
 	//REVIEW_ANSWER what for?
@@ -879,10 +877,9 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 		int control_file_elem_index;
 		pgFile search_key;
 		MemSet(&search_key, 0, sizeof(pgFile));
-		/* pgFileCompareRelPathWithExternal uses only .rel_path and .external_dir_num for comparision */
+		/* pgFileCompareRelPath uses only .rel_path for comparision */
 		search_key.rel_path = XLOG_CONTROL_FILE;
-		search_key.external_dir_num = 0;
-		control_file_elem_index = parray_bsearch_index(source_filelist, &search_key, pgFileCompareRelPathWithExternal);
+		control_file_elem_index = parray_bsearch_index(source_filelist, &search_key, pgFileCompareRelPath);
 		if(control_file_elem_index < 0)
 			elog(ERROR, "\"%s\" not found in \"%s\"\n", XLOG_CONTROL_FILE, source_pgdata);
 		source_pg_control_file = parray_remove(source_filelist, control_file_elem_index);
@@ -908,7 +905,7 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 	if (current.backup_mode != BACKUP_MODE_FULL)
 	{
 		elog(INFO, "Removing redundant files in destination directory");
-		parray_qsort(dest_filelist, pgFileCompareRelPathWithExternalDesc);
+		parray_qsort(dest_filelist, pgFileCompareRelPathDesc);
 		for (i = 0; i < parray_num(dest_filelist); i++)
 		{
 			bool     redundant = true;
@@ -917,7 +914,7 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 
 			//TODO optimize it and use some merge-like algorithm
 			//instead of bsearch for each file.
-			src_file = (pgFile **) parray_bsearch(source_filelist, file, pgFileCompareRelPathWithExternal);
+			src_file = (pgFile **) parray_bsearch(source_filelist, file, pgFileCompareRelPath);
 
 			if (src_file!= NULL && !(*src_file)->excluded && file->excluded)
 				(*src_file)->excluded = true;
@@ -926,7 +923,6 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 				redundant = false;
 
 			/* pg_filenode.map are always copied, because it's crc cannot be trusted */
-			Assert(file->external_dir_num == 0);
 			if (pg_strcasecmp(file->name, RELMAPPER_FILENAME) == 0)
 				redundant = true;
 
@@ -958,7 +954,7 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 
 	/* Sort the array for binary search */
 	if (dest_filelist)
-		parray_qsort(dest_filelist, pgFileCompareRelPathWithExternal);
+		parray_qsort(dest_filelist, pgFileCompareRelPath);
 
 	/* run copy threads */
 	elog(INFO, "Start transferring data files");

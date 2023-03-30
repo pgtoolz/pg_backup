@@ -790,7 +790,7 @@ backup_non_data_file(pgFile *file, pgFile *prev_file,
 					 bool missing_ok)
 {
 	/* special treatment for global/pg_control */
-	if (file->external_dir_num == 0 && strcmp(file->rel_path, XLOG_CONTROL_FILE) == 0)
+	if (strcmp(file->rel_path, XLOG_CONTROL_FILE) == 0)
 	{
 		copy_pgcontrol_file(FIO_DB_HOST, from_fullpath,
 							FIO_BACKUP_HOST, to_fullpath, file);
@@ -871,7 +871,7 @@ restore_data_file(parray *parent_chain, pgFile *dest_file, FILE *out,
 			backup_seq--;
 
 		/* lookup file in intermediate backup */
-		res_file = parray_bsearch(backup->files, dest_file, pgFileCompareRelPathWithExternal);
+		res_file = parray_bsearch(backup->files, dest_file, pgFileCompareRelPath);
 		tmp_file = (res_file) ? *res_file : NULL;
 
 		/* Destination file is not exists yet at this moment */
@@ -1282,7 +1282,7 @@ restore_non_data_file(parray *parent_chain, pgBackup *dest_backup,
 			pgFile	**res_file = NULL;
 
 			/* lookup file in intermediate backup */
-			res_file =  parray_bsearch(tmp_backup->files, dest_file, pgFileCompareRelPathWithExternal);
+			res_file =  parray_bsearch(tmp_backup->files, dest_file, pgFileCompareRelPath);
 			tmp_file = (res_file) ? *res_file : NULL;
 
 			/*
@@ -1347,16 +1347,7 @@ restore_non_data_file(parray *parent_chain, pgBackup *dest_backup,
 					to_fullpath, strerror(errno));
 	}
 
-	if (tmp_file->external_dir_num == 0)
-		join_path_components(from_root, tmp_backup->root_dir, DATABASE_DIR);
-	else
-	{
-		char		external_prefix[MAXPGPATH];
-
-		join_path_components(external_prefix, tmp_backup->root_dir, EXTERNAL_DIR);
-		makeExternalDirPathByNum(from_root, external_prefix, tmp_file->external_dir_num);
-	}
-
+	join_path_components(from_root, tmp_backup->root_dir, DATABASE_DIR);
 	join_path_components(from_fullpath, from_root, dest_file->rel_path);
 
 	in = fopen(from_fullpath, PG_BINARY_R);

@@ -113,7 +113,6 @@ bool no_validate = false;
 IncrRestoreMode incremental_mode = INCR_NONE;
 
 bool skip_block_validation = false;
-bool skip_external_dirs = false;
 
 /* array for datnames, provided via db-include and db-exclude */
 static parray *datname_exclude_list = NULL;
@@ -223,12 +222,10 @@ static ConfigOption cmd_options[] =
 	{ 'u', 139, "recovery-target-timeline",		&target_tli,		SOURCE_CMD_STRICT },
 	{ 's', 157, "recovery-target",	&target_stop,		SOURCE_CMD_STRICT },
 	{ 'f', 'T', "tablespace-mapping", opt_tablespace_map,	SOURCE_CMD_STRICT },
-	{ 'f', 155, "external-mapping",	opt_externaldir_map,	SOURCE_CMD_STRICT },
 	{ 's', 141, "recovery-target-name",	&target_name,		SOURCE_CMD_STRICT },
 	{ 's', 142, "recovery-target-action", &target_action,	SOURCE_CMD_STRICT },
 	{ 'b', 143, "no-validate",		&no_validate,		SOURCE_CMD_STRICT },
 	{ 'b', 154, "skip-block-validation", &skip_block_validation,	SOURCE_CMD_STRICT },
-	{ 'b', 156, "skip-external-dirs", &skip_external_dirs,	SOURCE_CMD_STRICT },
 	{ 'f', 158, "db-include", 		opt_datname_include_list, SOURCE_CMD_STRICT },
 	{ 'f', 159, "db-exclude", 		opt_datname_exclude_list, SOURCE_CMD_STRICT },
 	{ 'b', 'R', "restore-as-replica", &restore_as_replica,	SOURCE_CMD_STRICT },
@@ -739,7 +736,6 @@ main(int argc, char *argv[])
 
 		restore_params->primary_slot_name = replication_slot;
 		restore_params->skip_block_validation = skip_block_validation;
-		restore_params->skip_external_dirs = skip_external_dirs;
 		restore_params->partial_db_list = NULL;
 		restore_params->partial_restore_type = NONE;
 		restore_params->primary_conninfo = primary_conninfo;
@@ -820,8 +816,6 @@ main(int argc, char *argv[])
 		if (!stream_wal)
 			elog(INFO, "--stream is required, forcing stream mode");
 		current.stream = stream_wal = true;
-		if (instance_config.external_dir_str)
-			elog(ERROR, "external directories not supported fom \"%s\" command", get_subcmd_name(backup_subcmd));
 		// TODO check instance_config.conn_opt
 	}
 

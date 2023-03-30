@@ -59,11 +59,6 @@ msgstr ""
 msgid "                 [-D pgdata-path]\n"
 msgstr ""
 
-#: src/help.c:94 src/help.c:130 src/help.c:218
-#, c-format
-msgid "                 [--external-dirs=external-directories-paths]\n"
-msgstr ""
-
 #: src/help.c:95 src/help.c:132 src/help.c:305 src/help.c:731 src/help.c:794
 #, c-format
 msgid "                 [--log-level-console=log-level-console]\n"
@@ -333,16 +328,6 @@ msgstr ""
 #: src/help.c:169
 #, c-format
 msgid "                 [-T OLDDIR=NEWDIR] [--progress]\n"
-msgstr ""
-
-#: src/help.c:170 src/help.c:435
-#, c-format
-msgid "                 [--external-mapping=OLDDIR=NEWDIR]\n"
-msgstr ""
-
-#: src/help.c:171
-#, c-format
-msgid "                 [--skip-external-dirs] [--no-sync]\n"
 msgstr ""
 
 #: src/help.c:172 src/help.c:437
@@ -621,11 +606,6 @@ msgid ""
 "%s backup -B backup-path -b backup-mode --instance=instance_name\n"
 msgstr ""
 
-#: src/help.c:303 src/help.c:792
-#, c-format
-msgid "                 [-E external-directories-paths]\n"
-msgstr ""
-
 #: src/help.c:325
 #, c-format
 msgid ""
@@ -703,19 +683,9 @@ msgstr ""
 msgid "      --skip-block-validation      set to validate only file-level checksum\n"
 msgstr ""
 
-#: src/help.c:340 src/help.c:815 src/help.c:914
-#, c-format
-msgid "  -E  --external-dirs=external-directories-paths\n"
-msgstr ""
-
 #: src/help.c:341 src/help.c:816 src/help.c:915
 #, c-format
 msgid "                                   backup some directories not from pgdata \n"
-msgstr ""
-
-#: src/help.c:342 src/help.c:817 src/help.c:916
-#, c-format
-msgid "                                   (example: --external-dirs=/tmp/dir1:/tmp/dir2)\n"
 msgstr ""
 
 #: src/help.c:343
@@ -1136,11 +1106,6 @@ msgstr ""
 msgid "                 [--progress] [--force] [--no-sync]\n"
 msgstr ""
 
-#: src/help.c:436
-#, c-format
-msgid "                 [--skip-external-dirs]\n"
-msgstr ""
-
 #: src/help.c:438
 #, c-format
 msgid "                 [--db-include dbname | --db-exclude dbname]\n"
@@ -1191,21 +1156,6 @@ msgstr ""
 #: src/help.c:469 src/help.c:1061
 #, c-format
 msgid "                                   relocate the tablespace from directory OLDDIR to NEWDIR\n"
-msgstr ""
-
-#: src/help.c:470
-#, c-format
-msgid "      --external-mapping=OLDDIR=NEWDIR\n"
-msgstr ""
-
-#: src/help.c:471
-#, c-format
-msgid "                                   relocate the external directory from OLDDIR to NEWDIR\n"
-msgstr ""
-
-#: src/help.c:472
-#, c-format
-msgid "      --skip-external-dirs         do not restore all external directories\n"
 msgstr ""
 
 #: src/help.c:474
@@ -1670,11 +1620,6 @@ msgstr ""
 msgid ""
 "\n"
 "%s add-instance -B backup-path -D pgdata-path\n"
-msgstr ""
-
-#: src/help.c:905
-#, c-format
-msgid "                 [-E external-directory-path]\n"
 msgstr ""
 
 #: src/help.c:912

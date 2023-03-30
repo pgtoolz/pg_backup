@@ -6,7 +6,7 @@ from . import init_test, merge_test, option_test, show_test, compatibility_test,
     retention_test, pgpro560_test, pgpro589_test, pgpro2068_test, false_positive_test, replica_test, \
     compression_test, page_test, ptrack_test, archive_test, exclude_test, \
     auth_test, time_stamp_test, logging_test, \
-    locking_test, remote_test, external_test, config_test, checkdb_test, set_backup_test, incr_restore_test, \
+    locking_test, remote_test, config_test, checkdb_test, set_backup_test, incr_restore_test, \
     catchup_test, CVE_2018_1058_test, time_consuming_test
 
 
@@ -40,7 +40,6 @@ def load_tests(loader, tests, pattern):
     suite.addTests(loader.loadTestsFromModule(delete_test))
     suite.addTests(loader.loadTestsFromModule(delta_test))
     suite.addTests(loader.loadTestsFromModule(exclude_test))
-    suite.addTests(loader.loadTestsFromModule(external_test))
     suite.addTests(loader.loadTestsFromModule(false_positive_test))
     suite.addTests(loader.loadTestsFromModule(init_test))
     suite.addTests(loader.loadTestsFromModule(incr_restore_test))

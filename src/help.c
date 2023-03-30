@@ -85,7 +85,6 @@ help_pg_backup(void)
 
 	printf(_("\n  %s set-config -B backup-path --instance=instance_name\n"), PROGRAM_NAME);
 	printf(_("                 [-D pgdata-path]\n"));
-	printf(_("                 [--external-dirs=external-directories-paths]\n"));
 	printf(_("                 [--log-level-console=log-level-console]\n"));
 	printf(_("                 [--log-level-file=log-level-file]\n"));
 	printf(_("                 [--log-format-file=log-format-file]\n"));
@@ -122,7 +121,6 @@ help_pg_backup(void)
 	printf(_("                 [--stream [-S slot-name] [--temp-slot]]\n"));
 	printf(_("                 [--backup-pg-log] [-j num-threads] [--progress]\n"));
 	printf(_("                 [--no-validate] [--skip-block-validation]\n"));
-	printf(_("                 [--external-dirs=external-directories-paths]\n"));
 	printf(_("                 [--no-sync]\n"));
 	printf(_("                 [--log-level-console=log-level-console]\n"));
 	printf(_("                 [--log-level-file=log-level-file]\n"));
@@ -164,8 +162,7 @@ help_pg_backup(void)
 	printf(_("                 [-S | --primary-slot-name=slotname]\n"));
 	printf(_("                 [--no-validate] [--skip-block-validation]\n"));
 	printf(_("                 [-T OLDDIR=NEWDIR] [--progress]\n"));
-	printf(_("                 [--external-mapping=OLDDIR=NEWDIR]\n"));
-	printf(_("                 [--skip-external-dirs] [--no-sync]\n"));
+	printf(_("                 [--no-sync]\n"));
 	printf(_("                 [-X WALDIR | --waldir=WALDIR]\n"));
 	printf(_("                 [-I | --incremental-mode=none|checksum|lsn]\n"));
 	printf(_("                 [--db-include | --db-exclude]\n"));
@@ -213,7 +210,6 @@ help_pg_backup(void)
 
 	printf(_("\n  %s add-instance -B backup-path -D pgdata-path\n"), PROGRAM_NAME);
 	printf(_("                 --instance=instance_name\n"));
-	printf(_("                 [--external-dirs=external-directories-paths]\n"));
 	printf(_("                 [--remote-proto] [--remote-host]\n"));
 	printf(_("                 [--remote-port] [--remote-path] [--remote-user]\n"));
 	printf(_("                 [--ssh-options]\n"));
@@ -299,7 +295,6 @@ help_backup(void)
 	printf(_("                 [--stream [-S slot-name] [--temp-slot]]\n"));
 	printf(_("                 [--backup-pg-log] [-j num-threads] [--progress]\n"));
 	printf(_("                 [--no-validate] [--skip-block-validation]\n"));
-	printf(_("                 [-E external-directories-paths]\n"));
 	printf(_("                 [--no-sync]\n"));
 	printf(_("                 [--log-level-console=log-level-console]\n"));
 	printf(_("                 [--log-level-file=log-level-file]\n"));
@@ -338,9 +333,6 @@ help_backup(void)
 	printf(_("      --progress                   show progress\n"));
 	printf(_("      --no-validate                disable validation after backup\n"));
 	printf(_("      --skip-block-validation      set to validate only file-level checksum\n"));
-	printf(_("  -E  --external-dirs=external-directories-paths\n"));
-	printf(_("                                   backup some directories not from pgdata \n"));
-	printf(_("                                   (example: --external-dirs=/tmp/dir1:/tmp/dir2)\n"));
 	printf(_("      --no-sync                    do not sync backed up files to disk\n"));
 	printf(_("      --note=text                  add note to backup\n"));
 	printf(_("                                   (example: --note='backup before app update to v13.1')\n"));
@@ -432,8 +424,6 @@ help_restore(void)
 	printf(_("                 [--progress] [--force] [--no-sync]\n"));
 	printf(_("                 [--no-validate] [--skip-block-validation]\n"));
 	printf(_("                 [-T OLDDIR=NEWDIR]\n"));
-	printf(_("                 [--external-mapping=OLDDIR=NEWDIR]\n"));
-	printf(_("                 [--skip-external-dirs]\n"));
 	printf(_("                 [-X WALDIR | --waldir=WALDIR]\n"));
 	printf(_("                 [-I | --incremental-mode=none|checksum|lsn]\n"));
 	printf(_("                 [--db-include dbname | --db-exclude dbname]\n"));
@@ -468,9 +458,6 @@ help_restore(void)
 
 	printf(_("  -T, --tablespace-mapping=OLDDIR=NEWDIR\n"));
 	printf(_("                                   relocate the tablespace from directory OLDDIR to NEWDIR\n"));
-	printf(_("      --external-mapping=OLDDIR=NEWDIR\n"));
-	printf(_("                                   relocate the external directory from OLDDIR to NEWDIR\n"));
-	printf(_("      --skip-external-dirs         do not restore all external directories\n"));
 
 
 	printf(_("  -X, --waldir=WALDIR              location for the write-ahead log directory\n"));
@@ -824,7 +811,6 @@ help_set_config(void)
 {
 	printf(_("\n%s set-config -B backup-path --instance=instance_name\n"), PROGRAM_NAME);
 	printf(_("                 [-D pgdata-path]\n"));
-	printf(_("                 [-E external-directories-paths]\n"));
 	printf(_("                 [--restore-command=cmdline]\n"));
 	printf(_("                 [--log-level-console=log-level-console]\n"));
 	printf(_("                 [--log-level-file=log-level-file]\n"));
@@ -848,9 +834,6 @@ help_set_config(void)
 	printf(_("  -B, --backup-path=backup-path    location of the backup storage area\n"));
 	printf(_("      --instance=instance_name     name of the instance\n"));
 	printf(_("  -D, --pgdata=pgdata-path         location of the database storage area\n"));
-	printf(_("  -E  --external-dirs=external-directories-paths\n"));
-	printf(_("                                   backup some directories not from pgdata \n"));
-	printf(_("                                   (example: --external-dirs=/tmp/dir1:/tmp/dir2)\n"));
 	printf(_("      --restore-command=cmdline    command to use as 'restore_command' in recovery.conf; 'none' disables\n"));
 
 	printf(_("\n  Logging options:\n"));
@@ -934,7 +917,6 @@ help_add_instance(void)
 {
 	printf(_("\n%s add-instance -B backup-path -D pgdata-path\n"), PROGRAM_NAME);
 	printf(_("                 --instance=instance_name\n"));
-	printf(_("                 [-E external-directory-path]\n"));
 	printf(_("                 [--remote-proto] [--remote-host]\n"));
 	printf(_("                 [--remote-port] [--remote-path] [--remote-user]\n"));
 	printf(_("                 [--ssh-options]\n\n"));
@@ -943,9 +925,6 @@ help_add_instance(void)
 	printf(_("  -D, --pgdata=pgdata-path         location of the database storage area\n"));
 	printf(_("      --instance=instance_name     name of the new instance\n"));
 
-	printf(_("  -E  --external-dirs=external-directories-paths\n"));
-	printf(_("                                   backup some directories not from pgdata \n"));
-	printf(_("                                   (example: --external-dirs=/tmp/dir1:/tmp/dir2)\n"));
 	printf(_("\n  Remote options:\n"));
 	printf(_("      --remote-proto=protocol      remote protocol to use\n"));
 	printf(_("                                   available options: 'ssh', 'none' (default: ssh)\n"));

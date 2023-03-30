@@ -1081,7 +1081,6 @@ get_backup_filelist(pgBackup *backup, bool strict)
 					full_size,
 					mode,		/* bit length of mode_t depends on platforms */
 					is_datafile,
-					external_dir_num,
 					crc,
 					segno,
 					n_blocks,
@@ -1102,7 +1101,6 @@ get_backup_filelist(pgBackup *backup, bool strict)
 		get_control_value_int64(buf, "is_datafile", &is_datafile, true);
 		get_control_value_int64(buf, "crc", &crc, true);
 		get_control_value_str(buf, "compress_alg", compress_alg_string, sizeof(compress_alg_string), false);
-		get_control_value_int64(buf, "external_dir_num", &external_dir_num, false);
 		get_control_value_int64(buf, "dbOid", &dbOid, false);
 
 		file = pgFileInit(path);
@@ -1112,7 +1110,7 @@ get_backup_filelist(pgBackup *backup, bool strict)
 		file->is_datafile = is_datafile ? true : false;
 		file->crc = (pg_crc32) crc;
 		file->compress_alg = parse_compress_alg(compress_alg_string);
-		file->external_dir_num = external_dir_num;
+
 		file->dbOid = dbOid ? dbOid : 0;
 
 		/*
@@ -1145,23 +1143,8 @@ get_backup_filelist(pgBackup *backup, bool strict)
 		if (!file->is_datafile)
 			file->size = file->uncompressed_size;
 
-		if (file->external_dir_num == 0 && S_ISREG(file->mode))
-		{
-			bool is_datafile = file->is_datafile;
+		if (S_ISREG(file->mode))
 			set_forkname(file);
-			if (is_datafile != file->is_datafile)
-			{
-				if (is_datafile)
-					elog(WARNING, "File '%s' was stored as datafile, but looks like it is not",
-						 file->rel_path);
-				else
-					elog(WARNING, "File '%s' was stored as non-datafile, but looks like it is",
-						 file->rel_path);
-				/* Lets fail in tests */
-				Assert(file->is_datafile == file->is_datafile);
-				file->is_datafile = is_datafile;
-			}
-		}
 
 		parray_append(files, file);
 	}
@@ -1453,22 +1436,6 @@ pgBackupCreateDir(pgBackup *backup, const char *backup_instance_path)
 	subdirs = parray_new();
 	parray_append(subdirs, pg_strdup(DATABASE_DIR));
 
-	/* Add external dirs containers */
-	if (backup->external_dir_str)
-	{
-		parray *external_list;
-
-		external_list = make_external_directory_list(backup->external_dir_str,
-													 false);
-		for (i = 0; i < parray_num(external_list); i++)
-		{
-			/* Numeration of externaldirs starts with 1 */
-			makeExternalDirPathByNum(temp, EXTERNAL_DIR, i+1);
-			parray_append(subdirs, pg_strdup(temp));
-		}
-		free_dir_list(external_list);
-	}
-
 	backup->backup_id = create_backup_dir(backup, backup_instance_path);
 
 	if (backup->backup_id == INVALID_BACKUP_ID)
@@ -1542,7 +1509,7 @@ catalog_get_timelines(InstanceState *instanceState, InstanceConfig *instance)
 
 	/* read all xlog files that belong to this archive */
 	dir_list_file(xlog_files_list, instanceState->instance_wal_subdir_path,
-				  false, true, false, false, true, 0, FIO_BACKUP_HOST);
+				  false, true, false, false, true, FIO_BACKUP_HOST);
 	parray_qsort(xlog_files_list, pgFileCompareName);
 
 	timelineinfos = parray_new();
@@ -2426,10 +2393,6 @@ pgBackupWriteControl(FILE *out, pgBackup *backup, bool utc)
 	if (backup->primary_conninfo)
 		fio_fprintf(out, "primary_conninfo = '%s'\n", backup->primary_conninfo);
 
-	/* print external directories list */
-	if (backup->external_dir_str)
-		fio_fprintf(out, "external-dirs = '%s'\n", backup->external_dir_str);
-
 	if (backup->note)
 		fio_fprintf(out, "note = '%s'\n", backup->note);
 
@@ -2506,8 +2469,7 @@ write_backup(pgBackup *backup, bool strict)
  * Output the list of files to backup catalog DATABASE_FILE_LIST
  */
 void
-write_backup_filelist(pgBackup *backup, parray *files, const char *root,
-					  parray *external_list, bool sync)
+write_backup_filelist(pgBackup *backup, parray *files, const char *root, bool sync)
 {
 	FILE	   *out;
 	char		control_path[MAXPGPATH];
@@ -2561,7 +2523,7 @@ write_backup_filelist(pgBackup *backup, parray *files, const char *root,
 			 * Size of WAL files in 'pg_wal' is counted separately
 			 * TODO: in 3.0 add attribute is_walfile
 			 */
-			if (IsXLogFileName(file->name) && file->external_dir_num == 0)
+			if (IsXLogFileName(file->name))
 				wal_size_on_disk += file->write_size;
 			else
 			{
@@ -2573,13 +2535,12 @@ write_backup_filelist(pgBackup *backup, parray *files, const char *root,
 		len = sprintf(line, "{\"path\":\"%s\", \"size\":\"" INT64_FORMAT "\", "
 					 "\"mode\":\"%u\", \"is_datafile\":\"%u\", "
 					 "\"crc\":\"%u\", "
-					 "\"compress_alg\":\"%s\", \"external_dir_num\":\"%d\", "
+					 "\"compress_alg\":\"%s\", "
 					 "\"dbOid\":\"%u\"",
 					file->rel_path, file->write_size, file->mode,
 					file->is_datafile ? 1 : 0,
 					file->crc,
 					deparse_compress_alg(file->compress_alg),
-					file->external_dir_num,
 					file->dbOid);
 
 		if (file->is_datafile)
@@ -2685,7 +2646,6 @@ readBackupControlFile(const char *path)
 		{'u', 0, "compress-level",		&backup->compress_level, SOURCE_FILE_STRICT},
 		{'b', 0, "from-replica",		&backup->from_replica, SOURCE_FILE_STRICT},
 		{'s', 0, "primary-conninfo",	&backup->primary_conninfo, SOURCE_FILE_STRICT},
-		{'s', 0, "external-dirs",		&backup->external_dir_str, SOURCE_FILE_STRICT},
 		{'s', 0, "note",				&backup->note, SOURCE_FILE_STRICT},
 		{'u', 0, "content-crc",			&backup->content_crc, SOURCE_FILE_STRICT},
 		{0}
@@ -2953,7 +2913,6 @@ pgBackupInit(pgBackup *backup)
 	backup->primary_conninfo = NULL;
 	backup->program_version[0] = '\0';
 	backup->server_version[0] = '\0';
-	backup->external_dir_str = NULL;
 	backup->root_dir = NULL;
 	backup->database_dir = NULL;
 	backup->files = NULL;
@@ -2968,7 +2927,6 @@ pgBackupFree(void *backup)
 	pgBackup *b = (pgBackup *) backup;
 
 	pg_free(b->primary_conninfo);
-	pg_free(b->external_dir_str);
 	pg_free(b->root_dir);
 	pg_free(b->database_dir);
 	pg_free(b->note);

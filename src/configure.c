@@ -70,11 +70,6 @@ ConfigOption instance_options[] =
 		OPTION_INSTANCE_GROUP, 0, option_get_value
 	},
 #endif
-	{
-		's', 'E', "external-dirs",
-		&instance_config.external_dir_str, SOURCE_CMD, SOURCE_DEFAULT,
-		OPTION_INSTANCE_GROUP, 0, option_get_value
-	},
 	/* Connection options */
 	{
 		's', 'd', "pgdatabase",
@@ -422,11 +417,6 @@ readInstanceConfigFile(InstanceState *instanceState)
 			OPTION_INSTANCE_GROUP, 0, option_get_value
 		},
 	#endif
-		{
-			's', 'E', "external-dirs",
-			&instance->external_dir_str, SOURCE_CMD, SOURCE_DEFAULT,
-			OPTION_INSTANCE_GROUP, 0, option_get_value
-		},
 		/* Connection options */
 		{
 			's', 'd', "pgdatabase",

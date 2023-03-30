@@ -302,7 +302,6 @@ class ProbackupTest(object):
             print('pg_backup binary is not found')
             exit(1)
 
-        self.EXTERNAL_DIRECTORY_DELIMITER = ':'
         os.environ['PATH'] = os.path.dirname(
             self.probackup_path) + ':' + os.environ['PATH']
 

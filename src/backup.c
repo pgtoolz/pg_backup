@@ -46,9 +46,6 @@ static void do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 static void pg_switch_wal(PGconn *conn);
 
 static void pg_stop_backup(InstanceState *instanceState, pgBackup *backup, PGconn *pg_startbackup_conn, PGNodeInfo *nodeInfo);
-
-static void check_external_for_tablespaces(parray *external_list,
-										   PGconn *backup_conn);
 static parray *get_database_map(PGconn *pg_startbackup_conn);
 
 /* Check functions */
@@ -84,7 +81,6 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 			 PGNodeInfo *nodeInfo, bool no_sync, bool backup_logs)
 {
 	int			i;
-	char		external_prefix[MAXPGPATH]; /* Temp value. Used as template */
 	char		label[1024];
 	XLogRecPtr	prev_backup_start_lsn = InvalidXLogRecPtr;
 
@@ -96,7 +92,6 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 	pgBackup   *prev_backup = NULL;
 	parray	   *prev_backup_filelist = NULL;
 	parray	   *backup_list = NULL;
-	parray	   *external_dirs = NULL;
 	parray	   *database_map = NULL;
 
 	/* used for multitimeline incremental backup */
@@ -108,12 +103,6 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 	char		pretty_bytes[20];
 
 	elog(INFO, "Database backup start");
-	if(current.external_dir_str)
-	{
-		external_dirs = make_external_directory_list(current.external_dir_str,
-													 false);
-		check_external_for_tablespaces(external_dirs, backup_conn);
-	}
 
 	/* notify start of backup to PostgreSQL server */
 	time2iso(label, lengthof(label), current.start_time, false);
@@ -262,39 +251,19 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 
 	/* initialize backup's file list */
 	backup_files_list = parray_new();
-	join_path_components(external_prefix, current.root_dir, EXTERNAL_DIR);
 
 	/* list files with the logical path. omit $PGDATA */
 	fio_list_dir(backup_files_list, instance_config.pgdata,
-				 true, true, false, backup_logs, true, 0);
+				 true, true, false, backup_logs, true);
+
+	/* close ssh session in main thread */
+	fio_disconnect();
 
 	/*
 	 * Get database_map (name to oid) for use in partial restore feature.
 	 * It's possible that we fail and database_map will be NULL.
 	 */
 	database_map = get_database_map(backup_conn);
-
-	/*
-	 * Append to backup list all files and directories
-	 * from external directory option
-	 */
-	if (external_dirs)
-	{
-		for (i = 0; i < parray_num(external_dirs); i++)
-		{
-			/* External dirs numeration starts with 1.
-			 * 0 value is not external dir */
-			if (fio_is_remote(FIO_DB_HOST))
-				fio_list_dir(backup_files_list, parray_get(external_dirs, i),
-							 false, true, false, false, true, i+1);
-			else
-				dir_list_file(backup_files_list, parray_get(external_dirs, i),
-							  false, true, false, false, true, i+1, FIO_LOCAL_HOST);
-		}
-	}
-
-	/* close ssh session in main thread */
-	fio_disconnect();
 
 	/* Sanity check for backup_files_list, thank you, Windows:
 	 * https://github.com/postgrespro/pg_probackup/issues/48
@@ -319,7 +288,7 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 	 * Sorted array is used at least in parse_filelist_filenames(),
 	 * extractPageMap(), make_pagemap_from_ptrack().
 	 */
-	parray_qsort(backup_files_list, pgFileCompareRelPathWithExternal);
+	parray_qsort(backup_files_list, pgFileCompareRelPath);
 
 	/* Extract information about files in backup_list parsing their names:*/
 	parse_filelist_filenames(backup_files_list, instance_config.pgdata);
@@ -390,16 +359,7 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 		{
 			char		dirpath[MAXPGPATH];
 
-			if (file->external_dir_num)
-			{
-				char		temp[MAXPGPATH];
-				snprintf(temp, MAXPGPATH, "%s%d", external_prefix,
-						 file->external_dir_num);
-				join_path_components(dirpath, temp, file->rel_path);
-			}
-			else
-				join_path_components(dirpath, current.database_dir, file->rel_path);
-
+			join_path_components(dirpath, current.database_dir, file->rel_path);
 			elog(LOG, "Create directory '%s'", dirpath);
 			fio_mkdir(FIO_BACKUP_HOST, dirpath, DIR_PERMISSION, false);
 		}
@@ -413,11 +373,11 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 	parray_qsort(backup_files_list, pgFileCompareSize);
 	/* Sort the array for binary search */
 	if (prev_backup_filelist)
-		parray_qsort(prev_backup_filelist, pgFileCompareRelPathWithExternal);
+		parray_qsort(prev_backup_filelist, pgFileCompareRelPath);
 
 	/* write initial backup_content.control file and update backup.control  */
 	write_backup_filelist(&current, backup_files_list,
-						  instance_config.pgdata, external_dirs, true);
+						  instance_config.pgdata, true);
 	write_backup(&current, true);
 
 	/* Init backup page header map */
@@ -434,8 +394,6 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 		arg->nodeInfo = nodeInfo;
 		arg->from_root = instance_config.pgdata;
 		arg->to_root = current.database_dir;
-		arg->external_prefix = external_prefix;
-		arg->external_dirs = external_dirs;
 		arg->files_list = backup_files_list;
 		arg->prev_filelist = prev_backup_filelist;
 		arg->prev_start_lsn = prev_backup_start_lsn;
@@ -496,8 +454,7 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 		{
 			pgFile	   *tmp_file = (pgFile *) parray_get(backup_files_list, i);
 
-			if (tmp_file->external_dir_num == 0 &&
-				(strcmp(tmp_file->rel_path, XLOG_CONTROL_FILE) == 0))
+			if (strcmp(tmp_file->rel_path, XLOG_CONTROL_FILE) == 0)
 			{
 				pg_control = tmp_file;
 				break;
@@ -538,8 +495,7 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 	}
 
 	/* Print the list of files to backup catalog */
-	write_backup_filelist(&current, backup_files_list, instance_config.pgdata,
-						  external_dirs, true);
+	write_backup_filelist(&current, backup_files_list, instance_config.pgdata, true);
 	/* update backup control file to update size info */
 	write_backup(&current, true);
 
@@ -564,16 +520,7 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 				continue;
 
 			/* construct fullpath */
-			if (file->external_dir_num == 0)
-				join_path_components(to_fullpath, current.database_dir, file->rel_path);
-			else
-			{
-				char 	external_dst[MAXPGPATH];
-
-				makeExternalDirPathByNum(external_dst, external_prefix,
-										 file->external_dir_num);
-				join_path_components(to_fullpath, external_dst, file->rel_path);
-			}
+			join_path_components(to_fullpath, current.database_dir, file->rel_path);
 
 			if (fio_sync(FIO_BACKUP_HOST, to_fullpath) != 0)
 				elog(ERROR, "Cannot sync file \"%s\": %s", to_fullpath, strerror(errno));
@@ -593,10 +540,6 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 				(uint32) (current.stop_lsn >> 32), (uint32) (current.stop_lsn),
 				(uint32) (prev_backup->stop_lsn >> 32), (uint32) (prev_backup->stop_lsn),
 				backup_id_of(prev_backup));
-
-	/* clean external directories list */
-	if (external_dirs)
-		free_dir_list(external_dirs);
 
 	/* Cleanup */
 	if (backup_list)
@@ -694,11 +637,6 @@ do_backup(InstanceState *instanceState, pgSetBackupParams *set_backup_params,
 
 	/* Initialize PGInfonode */
 	pgNodeInit(&nodeInfo);
-
-	/* Save list of external directories */
-	if (instance_config.external_dir_str &&
-		(pg_strcasecmp(instance_config.external_dir_str, "none") != 0))
-		current.external_dir_str = instance_config.external_dir_str;
 
 	/* Create backup directory and BACKUP_CONTROL_FILE */
 	pgBackupCreateDir(&current, instanceState->instance_backup_subdir_path);
@@ -1703,8 +1641,7 @@ pg_stop_backup_write_file_helper(const char *path, const char *filename, const c
 	 */
 	if (file_list)
 	{
-		file = pgFileNew(full_filename, filename, true, 0,
-						 FIO_BACKUP_HOST);
+		file = pgFileNew(full_filename, filename, true, FIO_BACKUP_HOST);
 
 		if (S_ISREG(file->mode))
 		{
@@ -1868,8 +1805,7 @@ backup_files(void *arg)
 			/* update backup_content.control every 60 seconds */
 			if ((difftime(time(NULL), prev_time)) > 60)
 			{
-				write_backup_filelist(&current, arguments->files_list, arguments->from_root,
-									  arguments->external_dirs, false);
+				write_backup_filelist(&current, arguments->files_list, arguments->from_root, false);
 				/* update backup control file to update size info */
 				write_backup(&current, true);
 
@@ -1895,24 +1831,8 @@ backup_files(void *arg)
 		}
 
 		/* construct destination filepath */
-		if (file->external_dir_num == 0)
-		{
-			join_path_components(from_fullpath, arguments->from_root, file->rel_path);
-			join_path_components(to_fullpath, arguments->to_root, file->rel_path);
-		}
-		else
-		{
-			char 	external_dst[MAXPGPATH];
-			char	*external_path = parray_get(arguments->external_dirs,
-												file->external_dir_num - 1);
-
-			makeExternalDirPathByNum(external_dst,
-								 arguments->external_prefix,
-								 file->external_dir_num);
-
-			join_path_components(to_fullpath, external_dst, file->rel_path);
-			join_path_components(from_fullpath, external_path, file->rel_path);
-		}
+		join_path_components(from_fullpath, arguments->from_root, file->rel_path);
+		join_path_components(to_fullpath, arguments->to_root, file->rel_path);
 
 		/* Encountered some strange beast */
 		if (!S_ISREG(file->mode))
@@ -1924,7 +1844,7 @@ backup_files(void *arg)
 		{
 			pgFile	**prev_file_tmp = NULL;
 			prev_file_tmp = (pgFile **) parray_bsearch(arguments->prev_filelist,
-											file, pgFileCompareRelPathWithExternal);
+											file, pgFileCompareRelPath);
 			if (prev_file_tmp)
 			{
 				/* File exists in previous backup */
@@ -2047,11 +1967,9 @@ process_block_change(ForkNumber forknum, RelFileNode rnode, BlockNumber blkno)
 	else
 		f.rel_path = rel_path;
 
-	f.external_dir_num = 0;
-
 	/* backup_files_list should be sorted before */
 	file_item = (pgFile **) parray_bsearch(backup_files_list, &f,
-										   pgFileCompareRelPathWithExternal);
+										   pgFileCompareRelPath);
 
 	/*
 	 * If we don't have any record of this file in the file map, it means
@@ -2077,73 +1995,6 @@ process_block_change(ForkNumber forknum, RelFileNode rnode, BlockNumber blkno)
 
 }
 
-void
-check_external_for_tablespaces(parray *external_list, PGconn *backup_conn)
-{
-	PGresult   *res;
-	int			i = 0;
-	int			j = 0;
-	int 		ntups;
-	char	   *tablespace_path = NULL;
-	char	   *query = "SELECT pg_catalog.pg_tablespace_location(oid) "
-						"FROM pg_catalog.pg_tablespace "
-						"WHERE pg_catalog.pg_tablespace_location(oid) <> '';";
-
-	res = pgut_execute(backup_conn, query, 0, NULL);
-
-	/* Check successfull execution of query */
-	if (!res)
-		elog(ERROR, "Failed to get list of tablespaces");
-
-	ntups = PQntuples(res);
-	for (i = 0; i < ntups; i++)
-	{
-		tablespace_path = PQgetvalue(res, i, 0);
-		Assert (strlen(tablespace_path) > 0);
-
-		canonicalize_path(tablespace_path);
-
-		for (j = 0; j < parray_num(external_list); j++)
-		{
-			char *external_path = parray_get(external_list, j);
-
-			if (path_is_prefix_of_path(external_path, tablespace_path))
-				elog(ERROR, "External directory path (-E option) \"%s\" "
-							"contains tablespace \"%s\"",
-							external_path, tablespace_path);
-			if (path_is_prefix_of_path(tablespace_path, external_path))
-				elog(WARNING, "External directory path (-E option) \"%s\" "
-							  "is in tablespace directory \"%s\"",
-							  tablespace_path, external_path);
-		}
-	}
-	PQclear(res);
-
-	/* Check that external directories do not overlap */
-	if (parray_num(external_list) < 2)
-		return;
-
-	for (i = 0; i < parray_num(external_list); i++)
-	{
-		char *external_path = parray_get(external_list, i);
-
-		for (j = 0; j < parray_num(external_list); j++)
-		{
-			char *tmp_external_path = parray_get(external_list, j);
-
-			/* skip yourself */
-			if (j == i)
-				continue;
-
-			if (path_is_prefix_of_path(external_path, tmp_external_path))
-				elog(ERROR, "External directory path (-E option) \"%s\" "
-							"contain another external directory \"%s\"",
-							external_path, tmp_external_path);
-
-		}
-	}
-}
-
 /*
  * Calculate pgdata_bytes
  * accepts (parray *) of (pgFile *)
@@ -2162,7 +2013,7 @@ calculate_datasize_of_filelist(parray *filelist)
 	{
 		pgFile	   *file = (pgFile *) parray_get(filelist, i);
 
-		if (file->external_dir_num != 0 || file->excluded)
+		if (file->excluded)
 			continue;
 
 		if (S_ISDIR(file->mode))

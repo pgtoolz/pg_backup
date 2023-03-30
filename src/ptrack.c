@@ -285,10 +285,6 @@ make_pagemap_from_ptrack_2(parray *files,
 		if (!file->is_datafile)
 			continue;
 
-		/* Consider only files from PGDATA (this check is probably redundant) */
-		if (file->external_dir_num != 0)
-			continue;
-
 		if (filemaps)
 		{
 			dummy_map->path = file->rel_path;
