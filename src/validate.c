@@ -31,7 +31,6 @@ typedef struct
 	uint32		backup_version;
 	BackupMode	backup_mode;
 	parray		*dbOid_exclude_list;
-	const char	*external_prefix;
 	HeaderMap   *hdr_map;
 
 	/*
@@ -48,7 +47,6 @@ typedef struct
 void
 pgBackupValidate(pgBackup *backup, pgRestoreParams *params)
 {
-	char		external_prefix[MAXPGPATH];
 	parray	   *files = NULL;
 	bool		corrupted = false;
 	bool		validation_isok = true;
@@ -115,7 +113,6 @@ pgBackupValidate(pgBackup *backup, pgRestoreParams *params)
 		backup->backup_mode != BACKUP_MODE_DIFF_DELTA)
 		elog(WARNING, "Invalid backup_mode of backup %s", backup_id_of(backup));
 
-	join_path_components(external_prefix, backup->root_dir, EXTERNAL_DIR);
 	files = get_backup_filelist(backup, false);
 
 	if (!files)
@@ -151,7 +148,6 @@ pgBackupValidate(pgBackup *backup, pgRestoreParams *params)
 		arg->stop_lsn = backup->stop_lsn;
 		arg->checksum_version = backup->checksum_version;
 		arg->backup_version = parse_program_version(backup->program_version);
-		arg->external_prefix = external_prefix;
 		arg->hdr_map = &(backup->hdr_map);
 //		arg->dbOid_exclude_list = dbOid_exclude_list;
 		/* By default there are some error */
@@ -251,8 +247,8 @@ pgBackupValidateFiles(void *arg)
 		 * If in partial validate, check if the file belongs to the database
 		 * we exclude. Only files from pgdata can be skipped.
 		 */
-		//if (arguments->dbOid_exclude_list && file->external_dir_num == 0
-		//	&& parray_bsearch(arguments->dbOid_exclude_list,
+		//if (arguments->dbOid_exclude_list &&
+		//	  parray_bsearch(arguments->dbOid_exclude_list,
 		//					   &file->dbOid, pgCompareOid))
 		//{
 		//	elog(VERBOSE, "Skip file validation due to partial restore: \"%s\"",
@@ -290,15 +286,7 @@ pgBackupValidateFiles(void *arg)
 		if (file->write_size == 0)
 			continue;
 
-		if (file->external_dir_num)
-		{
-			char temp[MAXPGPATH];
-
-			makeExternalDirPathByNum(temp, arguments->external_prefix, file->external_dir_num);
-			join_path_components(file_fullpath, temp, file->rel_path);
-		}
-		else
-			join_path_components(file_fullpath, arguments->base_path, file->rel_path);
+		join_path_components(file_fullpath, arguments->base_path, file->rel_path);
 
 		/* TODO: it is redundant to check file existence using stat */
 		if (stat(file_fullpath, &st) == -1)
@@ -340,8 +328,7 @@ pgBackupValidateFiles(void *arg)
 			 * Starting from 2.0.25 we calculate crc of pg_control differently.
 			 */
 			if (arguments->backup_version >= 20025 &&
-				strcmp(file->rel_path, XLOG_CONTROL_FILE) == 0 &&
-				file->external_dir_num == 0)
+				strcmp(file->rel_path, XLOG_CONTROL_FILE) == 0)
 				crc = get_pgcontrol_checksum(arguments->base_path);
 			else
 #if PG_VERSION_NUM >= 120000
@@ -725,11 +712,11 @@ validate_tablespace_map(pgBackup *backup, bool no_validate)
 	pg_crc32    crc;
 	parray     *files = get_backup_filelist(backup, true);
 
-	parray_qsort(files, pgFileCompareRelPathWithExternal);
+	parray_qsort(files, pgFileCompareRelPath);
 	join_path_components(map_path, backup->database_dir, PG_TABLESPACE_MAP_FILE);
 
 	dummy = pgFileInit(PG_TABLESPACE_MAP_FILE);
-	tablespace_map = (pgFile **) parray_bsearch(files, dummy, pgFileCompareRelPathWithExternal);
+	tablespace_map = (pgFile **) parray_bsearch(files, dummy, pgFileCompareRelPath);
 
 	if (!tablespace_map)
 	{

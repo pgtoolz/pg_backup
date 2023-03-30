@@ -300,7 +300,7 @@ StreamLog(void *arg)
 	 * so if stop_lsn segno is already in the list,
 	 * then list must be sorted to detect duplicates.
 	 */
-	parray_qsort(xlog_files_list, pgFileCompareRelPathWithExternal);
+	parray_qsort(xlog_files_list, pgFileCompareRelPath);
 
 	/* Add the last segment to the list */
 	add_walsegment_to_filelist(xlog_files_list, stream_arg->starttli,
@@ -684,7 +684,7 @@ add_walsegment_to_filelist(parray *filelist, uint32 timeline, XLogRecPtr xlogpos
     join_path_components(wal_segment_fullpath, basedir, wal_segment_name);
     join_path_components(wal_segment_relpath, PG_XLOG_DIR, wal_segment_name);
 
-    file = pgFileNew(wal_segment_fullpath, wal_segment_relpath, false, 0, FIO_BACKUP_HOST);
+    file = pgFileNew(wal_segment_fullpath, wal_segment_relpath, false, FIO_BACKUP_HOST);
 
     /*
      * Check if file is already in the list
@@ -692,7 +692,7 @@ add_walsegment_to_filelist(parray *filelist, uint32 timeline, XLogRecPtr xlogpos
      * try not to add duplicates
      */
 
-    existing_file = (pgFile **) parray_bsearch(filelist, file, pgFileCompareRelPathWithExternal);
+    existing_file = (pgFile **) parray_bsearch(filelist, file, pgFileCompareRelPath);
 
     if (existing_file)
     {
@@ -732,7 +732,7 @@ add_history_file_to_filelist(parray *filelist, uint32 timeline, char *basedir)
     join_path_components(fullpath, basedir, filename);
     join_path_components(relpath, PG_XLOG_DIR, filename);
 
-    file = pgFileNew(fullpath, relpath, false, 0, FIO_BACKUP_HOST);
+    file = pgFileNew(fullpath, relpath, false, FIO_BACKUP_HOST);
 
     /* calculate crc */
     if (do_crc)

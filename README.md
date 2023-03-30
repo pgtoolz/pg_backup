@@ -17,7 +17,6 @@ As compared to other backup solutions, `pg_backup` offers the following benefits
 * Deduplication: saving disk space by not copying unchanged non-data files, such as `_vm` or `_fsm`
 * Remote operations: backing up PostgreSQL instance located on a remote system or restoring a backup remotely
 * Backup from standby: avoid extra load on master by taking backups from a standby server
-* External directories: backing up files and directories located outside of the PostgreSQL `data directory` (PGDATA), such as scripts, configuration files, logs, or SQL dump files.
 * Backup Catalog: get list of backups and corresponding meta information in plain text or JSON formats
 * Archive catalog: getting the list of all WAL timelines and the corresponding meta information in plain text or JSON formats
 * Partial Restore: restore only the specified databases or exclude the specified databases from restore.

@@ -208,7 +208,7 @@ do_block_validation(char *pgdata, uint32 checksum_version)
 
 	/* list files with the logical path. omit $PGDATA */
 	dir_list_file(files_list, pgdata, true, true,
-				  false, false, true, 0, FIO_DB_HOST);
+				  false, false, true, FIO_DB_HOST);
 
 	/*
 	 * Sort pathname ascending.
@@ -217,7 +217,7 @@ do_block_validation(char *pgdata, uint32 checksum_version)
 	 * 1 - create 'base'
 	 * 2 - create 'base/1'
 	 */
-	parray_qsort(files_list, pgFileCompareRelPathWithExternal);
+	parray_qsort(files_list, pgFileCompareRelPath);
 	/* Extract information about files in pgdata parsing their names:*/
 	parse_filelist_filenames(files_list, pgdata);
 

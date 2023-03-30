@@ -267,14 +267,6 @@ doc/src/sgml/pgprobackup.sgml
     </listitem>
     <listitem>
       <para>
-        External directories: backing up files and directories
-        located outside of the <productname>PostgreSQL</productname> data
-        directory (<envar>PGDATA</envar>), such as scripts, configuration
-        files, logs, or SQL dump files.
-      </para>
-    </listitem>
-    <listitem>
-      <para>
         Backup catalog: getting the list of backups and the corresponding meta
         information in plain text or
         <acronym>JSON</acronym> formats.
@@ -1356,42 +1348,6 @@ pg_backup backup -B <replaceable>backup_dir</replaceable> --instance <replaceabl
         always performs sanity checks for page headers.
       </para>
     </refsect3>
-    <refsect3 id="pbk-external-directories">
-      <title>External Directories</title>
-      <para>
-        To back up a directory located outside of the data directory,
-        use the optional <option>--external-dirs</option> parameter
-        that specifies the path to this directory. If you would like
-        to add more than one external directory, you can provide several paths
-        separated by colons on Linux systems.
-      </para>
-      <para>
-        For example, to include <filename>/etc/dir1</filename> and
-        <filename>/etc/dir2</filename> directories into the full
-        backup of your <replaceable>instance_name</replaceable> instance
-        that will be stored under the <replaceable>backup_dir</replaceable>
-        directory on Linux, run:
-      </para>
-      <programlisting>
-pg_backup backup -B <replaceable>backup_dir</replaceable> --instance <replaceable>instance_name</replaceable> -b FULL --external-dirs=/etc/dir1:/etc/dir2
-</programlisting>
-      <para>
-        <application>pg_backup</application> recursively copies the contents
-        of each external directory into a separate subdirectory in the backup
-        catalog. Since external directories included into different backups
-        do not have to be the same, when you are restoring the cluster from an
-        incremental backup, only those directories that belong to this
-        particular backup will be restored. Any external directories
-        stored in the previous backups will be ignored.
-      </para>
-      <para>
-        To include the same directories into each backup of your
-        instance, you can specify them in the <filename>pg_probackup.conf</filename>
-        configuration file using the
-        <xref linkend="pbk-set-config"/> command with the
-        <option>--external-dirs</option> option.
-      </para>
-    </refsect3>
   </refsect2>
 
   <refsect2 id="pbk-verifying-a-cluster">
@@ -2106,7 +2062,7 @@ pg_backup backup -B <replaceable>backup_dir</replaceable> --instance <replaceabl
     </para>
     <programlisting>
 pg_backup set-config -B <replaceable>backup_dir</replaceable> --instance <replaceable>instance_name</replaceable>
-[--external-dirs=<replaceable>external_directory_path</replaceable>] [<replaceable>remote_options</replaceable>] [<replaceable>connection_options</replaceable>] [<replaceable>retention_options</replaceable>] [<replaceable>logging_options</replaceable>]
+[<replaceable>remote_options</replaceable>] [<replaceable>connection_options</replaceable>] [<replaceable>retention_options</replaceable>] [<replaceable>logging_options</replaceable>]
 </programlisting>
     <para>
       To view the current settings, run the following command:
@@ -3388,12 +3344,6 @@ pg_backup delete -B <replaceable>backup_dir</replaceable> --instance <replaceabl
         </listitem>
         <listitem>
           <para>
-           Copying external directories
-           is not supported.
-          </para>
-        </listitem>
-        <listitem>
-          <para>
            DDL commands
            <ulink url="https://postgresql.org/docs/current/sql-createtablespace.html"
            ><command>CREATE TABLESPACE</command></ulink
@@ -3612,13 +3562,12 @@ pg_backup set-config -B <replaceable>backup_dir</replaceable> --instance <replac
 [--retention-redundancy=<replaceable>redundancy</replaceable>][--retention-window=<replaceable>window</replaceable>][--wal-depth=<replaceable>wal_depth</replaceable>]
 [--compress-algorithm=<replaceable>compression_algorithm</replaceable>] [--compress-level=<replaceable>compression_level</replaceable>]
 [-d <replaceable>dbname</replaceable>] [-h <replaceable>host</replaceable>] [-p <replaceable>port</replaceable>] [-U <replaceable>username</replaceable>]
-[--archive-timeout=<replaceable>timeout</replaceable>] [--external-dirs=<replaceable>external_directory_path</replaceable>]
-[--restore-command=<replaceable>cmdline</replaceable>]
+[--archive-timeout=<replaceable>timeout</replaceable>] [--restore-command=<replaceable>cmdline</replaceable>]
 [<replaceable>remote_options</replaceable>] [<replaceable>remote_wal_archive_options</replaceable>] [<replaceable>logging_options</replaceable>]
 </programlisting>
       <para>
-        Adds the specified connection, compression, retention, logging,
-        and external directory settings into the <filename>pg_probackup.conf</filename>
+        Adds the specified connection, compression, retention and logging
+        settings into the <filename>pg_probackup.conf</filename>
         configuration file, or modifies the previously defined values.
       </para>
       <para>
@@ -3718,7 +3667,7 @@ pg_backup backup -B <replaceable>backup_dir</replaceable> -b <replaceable>backup
 [-C] [--stream [-S slot_name] [--temp-slot]] [--backup-pg-log]
 [--no-validate] [--skip-block-validation]
 [-w --no-password] [-W --password]
-[--archive-timeout=<replaceable>timeout</replaceable>] [--external-dirs=<replaceable>external_directory_path</replaceable>]
+[--archive-timeout=<replaceable>timeout</replaceable>]
 [--no-sync] [--note=<replaceable>backup_note</replaceable>]
 [<replaceable>connection_options</replaceable>] [<replaceable>compression_options</replaceable>] [<replaceable>remote_options</replaceable>]
 [<replaceable>retention_options</replaceable>] [<replaceable>pinning_options</replaceable>] [<replaceable>logging_options</replaceable>]
@@ -3798,21 +3747,6 @@ pg_backup backup -B <replaceable>backup_dir</replaceable> -b <replaceable>backup
         Includes the log directory into the backup. This directory
         usually contains log messages. By default, log directory is
         excluded.
-      </para>
-      </listitem>
-      </varlistentry>
-
-      <varlistentry>
-<term><option>-E <replaceable>external_directory_path</replaceable></option></term>
-<term><option>--external-dirs=<replaceable>external_directory_path</replaceable></option></term>
-      <listitem>
-      <para>
-        Includes the specified directory into the backup by recursively
-        copying its contents into a separate subdirectory in the backup catalog. This option
-        is useful to back up scripts, SQL dump files, and configuration
-        files located outside of the data directory. If you would like
-        to back up several external directories, separate their paths
-        by a colon on Unix.
       </para>
       </listitem>
       </varlistentry>
@@ -3899,7 +3833,7 @@ pg_backup backup -B <replaceable>backup_dir</replaceable> -b <replaceable>backup
 pg_backup restore -B <replaceable>backup_dir</replaceable> --instance <replaceable>instance_name</replaceable>
 [--help] [-D <replaceable>data_dir</replaceable>] [-i <replaceable>backup_id</replaceable>]
 [-j <replaceable>num_threads</replaceable>] [--progress]
-[-T <replaceable>OLDDIR</replaceable>=<replaceable>NEWDIR</replaceable>] [--external-mapping=<replaceable>OLDDIR</replaceable>=<replaceable>NEWDIR</replaceable>] [--skip-external-dirs]
+[-T <replaceable>OLDDIR</replaceable>=<replaceable>NEWDIR</replaceable>]
 [-R | --restore-as-replica] [--no-validate] [--skip-block-validation]
 [--force] [--no-sync]
 [--restore-command=<replaceable>cmdline</replaceable>]
@@ -3981,31 +3915,6 @@ pg_backup restore -B <replaceable>backup_dir</replaceable> --instance <replaceab
         be absolute paths. If the path contains the equals sign (<literal>=</literal>),
         escape it with a backslash. This option can be specified
         multiple times for multiple tablespaces.
-      </para>
-      </listitem>
-      </varlistentry>
-
-      <varlistentry>
-<term><option>--external-mapping=<replaceable>OLDDIR</replaceable>=<replaceable>NEWDIR</replaceable></option></term>
-      <listitem>
-      <para>
-        Relocates an external directory included into the backup from
-        the <replaceable>OLDDIR</replaceable> to the <replaceable>NEWDIR</replaceable> directory at the time of recovery.
-        Both <replaceable>OLDDIR</replaceable> and <replaceable>NEWDIR</replaceable> must be absolute paths. If the path
-        contains the equals sign (<literal>=</literal>), escape it with a backslash. This
-        option can be specified multiple times for multiple
-        directories.
-      </para>
-      </listitem>
-      </varlistentry>
-
-      <varlistentry>
-<term><option>--skip-external-dirs</option></term>
-      <listitem>
-      <para>
-        Skip external directories included into the backup with the
-        <option>--external-dirs</option> option. The contents of
-        these directories will not be restored.
       </para>
       </listitem>
       </varlistentry>
