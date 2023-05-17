@@ -3322,7 +3322,7 @@ fio_communicate(int in, int out)
 				IO_CHECK(fio_write_all(out, buf, hdr.size),  hdr.size);
 			break;
 		  case FIO_AGENT_VERSION:
-			hdr.arg = AGENT_PROTOCOL_VERSION;
+			hdr.arg = AGENT_PROTOCOL_VERSION_NUM;
 			IO_CHECK(fio_write_all(out, &hdr, sizeof(hdr)), sizeof(hdr));
 			break;
 		  case FIO_STAT: /* Get information about file with specified path */

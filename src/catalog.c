@@ -2324,9 +2324,9 @@ pgBackupWriteControl(FILE *out, pgBackup *backup, bool utc)
 	fio_fprintf(out, "block-size = %u\n", backup->block_size);
 	fio_fprintf(out, "xlog-block-size = %u\n", backup->wal_block_size);
 	fio_fprintf(out, "checksum-version = %u\n", backup->checksum_version);
-	if (backup->program_version[0] != '\0')
-		fio_fprintf(out, "program-version = %s\n", backup->program_version);
-	if (backup->server_version[0] != '\0')
+
+	fio_fprintf(out, "program-version = %s\n", backup->program_version);
+	if (backup->server_version_num > 0)
 		fio_fprintf(out, "server-version = %s\n", backup->server_version);
 
 	fio_fprintf(out, "\n#Result backup info\n");
@@ -2751,14 +2751,16 @@ readBackupControlFile(const char *path)
 	{
 		strlcpy(backup->program_version, program_version,
 				sizeof(backup->program_version));
-		pfree(program_version);
+		backup->program_version_num = parse_program_version(backup->program_version);
+		pg_free(program_version);
 	}
 
 	if (server_version)
 	{
 		strlcpy(backup->server_version, server_version,
 				sizeof(backup->server_version));
-		pfree(server_version);
+		backup->server_version_num = parse_server_version(backup->server_version);
+		pg_free(server_version);
 	}
 
 	if (compress_alg)
@@ -2862,12 +2864,23 @@ pgNodeInit(PGNodeInfo *node)
 
 	node->is_superuser = false;
 
-	node->server_version = 0;
-	node->server_version_str[0] = '\0';
+	node->server_version_num = 0;
+//	node->server_version_str = NULL;
 
 	node->ptrack_version_num = 0;
 	node->is_ptrack_enabled = false;
 	node->ptrack_schema = NULL;
+}
+
+/*
+ * free pgNode object
+ */
+void
+pgNodeFree(PGNodeInfo *node)
+{
+//	pg_free(node->server_version_str);
+	pg_free((void*) node->ptrack_schema);
+	pg_free(node);
 }
 
 /*
@@ -2907,8 +2920,10 @@ pgBackupInit(pgBackup *backup)
 	backup->merge_dest_backup = INVALID_BACKUP_ID;
 	backup->parent_backup_link = NULL;
 	backup->primary_conninfo = NULL;
-	backup->program_version[0] = '\0';
-	backup->server_version[0] = '\0';
+//	backup->program_version = NULL;
+	backup->program_version_num = 0;
+//	backup->server_version = NULL;
+	backup->server_version_num = 0;
 	backup->root_dir = NULL;
 	backup->database_dir = NULL;
 	backup->files = NULL;
@@ -2922,6 +2937,8 @@ pgBackupFree(void *backup)
 {
 	pgBackup *b = (pgBackup *) backup;
 
+//	pg_free(b->program_version);
+//	pg_free(b->server_version);
 	pg_free(b->primary_conninfo);
 	pg_free(b->root_dir);
 	pg_free(b->database_dir);

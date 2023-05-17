@@ -28,7 +28,7 @@ typedef struct
 	bool		corrupted;
 	XLogRecPtr 	stop_lsn;
 	uint32		checksum_version;
-	uint32		backup_version;
+	uint32		program_version_num;
 	BackupMode	backup_mode;
 	parray		*dbOid_exclude_list;
 	HeaderMap   *hdr_map;
@@ -57,7 +57,7 @@ pgBackupValidate(pgBackup *backup, pgRestoreParams *params)
 //	parray		*dbOid_exclude_list = NULL;
 
 	/* Check backup program version */
-	if (parse_program_version(backup->program_version) > parse_program_version(PROGRAM_VERSION))
+	if (backup->program_version_num > PROGRAM_VERSION_NUM)
 		elog(ERROR, "%s binary version is %s, but backup %s version is %s. "
 			"%s do not guarantee to be forward compatible. "
 			"Please upgrade %s binary.",
@@ -65,10 +65,10 @@ pgBackupValidate(pgBackup *backup, pgRestoreParams *params)
 				backup->program_version, PROGRAM_NAME, PROGRAM_NAME);
 
 	/* Check backup server version */
-	if (strcmp(backup->server_version, PG_MAJORVERSION) != 0)
-        elog(ERROR, "Backup %s has server version %s, but current %s binary "
-					"compiled with server version %s",
-                backup_id_of(backup), backup->server_version, PROGRAM_NAME, PG_MAJORVERSION);
+	if ((backup->server_version_num / 10000) != PG_MAJORVERSION_NUM)
+        elog(ERROR, "Backup %s has server version %d, but current %s binary "
+					"compiled with server version %d",
+                backup_id_of(backup), (backup->server_version_num / 10000), PROGRAM_NAME, PG_MAJORVERSION_NUM);
 
 	if (backup->status == BACKUP_STATUS_RUNNING)
 	{
@@ -147,7 +147,7 @@ pgBackupValidate(pgBackup *backup, pgRestoreParams *params)
 		arg->backup_mode = backup->backup_mode;
 		arg->stop_lsn = backup->stop_lsn;
 		arg->checksum_version = backup->checksum_version;
-		arg->backup_version = parse_program_version(backup->program_version);
+		arg->program_version_num = backup->program_version_num;
 		arg->hdr_map = &(backup->hdr_map);
 //		arg->dbOid_exclude_list = dbOid_exclude_list;
 		/* By default there are some error */
@@ -189,31 +189,6 @@ pgBackupValidate(pgBackup *backup, pgRestoreParams *params)
 		elog(WARNING, "Backup %s data files are corrupted", backup_id_of(backup));
 	else
 		elog(INFO, "Backup %s data files are valid", backup_id_of(backup));
-
-	/* Issue #132 kludge */
-	if (!corrupted &&
-		((parse_program_version(backup->program_version) == 20104)||
-		 (parse_program_version(backup->program_version) == 20105)||
-		 (parse_program_version(backup->program_version) == 20201)))
-	{
-		char path[MAXPGPATH];
-		struct stat st;
-
-		join_path_components(path, backup->root_dir, DATABASE_FILE_LIST);
-
-		if (fio_stat(FIO_BACKUP_HOST, path, &st, true) < 0)
-			elog(ERROR, "Cannot stat file \"%s\": %s", path, strerror(errno));
-
-		if (st.st_size >= (BLCKSZ*500))
-		{
-			elog(WARNING, "Backup %s is a victim of metadata corruption. "
-							"Additional information can be found here: "
-							"https://github.com/postgrespro/pg_probackup/issues/132",
-							backup_id_of(backup));
-			backup->status = BACKUP_STATUS_CORRUPT;
-			write_backup_status(backup, BACKUP_STATUS_CORRUPT, true);
-		}
-	}
 }
 
 /*
@@ -314,34 +289,10 @@ pgBackupValidateFiles(void *arg)
 		 */
 		if (!file->is_datafile || skip_block_validation)
 		{
-			/*
-			 * Pre 2.0.22 we use CRC-32C, but in newer version of pg_backup we
-			 * use CRC-32.
-			 *
-			 * pg_control stores its content and checksum of the content, calculated
-			 * using CRC-32C. If we calculate checksum of the whole pg_control using
-			 * CRC-32C we get same checksum constantly. It might be because of the
-			 * CRC-32C algorithm.
-			 * To avoid this problem we need to use different algorithm, CRC-32 in
-			 * this case.
-			 *
-			 * Starting from 2.0.25 we calculate crc of pg_control differently.
-			 */
-			if (arguments->backup_version >= 20025 &&
-				strcmp(file->rel_path, XLOG_CONTROL_FILE) == 0)
+			if (strcmp(file->rel_path, XLOG_CONTROL_FILE) == 0)
 				crc = get_pgcontrol_checksum(arguments->base_path);
 			else
-#if PG_VERSION_NUM >= 120000
-			{
-				Assert(arguments->backup_version >= 20025);
 				crc = pgFileGetCRC32C(file_fullpath, false);
-			}
-#else /* PG_VERSION_NUM < 120000 */
-				if (arguments->backup_version <= 20021 || arguments->backup_version >= 20025)
-					crc = pgFileGetCRC32C(file_fullpath, false);
-				else
-					crc = pgFileGetCRC32(file_fullpath, false);
-#endif /* PG_VERSION_NUM < 120000 */
 
 			if (crc != file->crc)
 			{
@@ -359,7 +310,7 @@ pgBackupValidateFiles(void *arg)
 			 */
 			if (!validate_file_pages(file, file_fullpath, arguments->stop_lsn,
 								  arguments->checksum_version,
-								  arguments->backup_version,
+								  arguments->program_version_num,
 								  arguments->hdr_map))
 				arguments->corrupted = true;
 		}
@@ -735,16 +686,7 @@ validate_tablespace_map(pgBackup *backup, bool no_validate)
 	/* check tablespace map checksumms */
 	if (!no_validate)
 	{
-#if PG_VERSION_NUM >= 120000
-		Assert(parse_program_version(backup->program_version) >= 20025);
 		crc = pgFileGetCRC32C(map_path, false);
-#else /* PG_VERSION_NUM < 120000 */
-		if (parse_program_version(backup->program_version) <= 20021
-				|| parse_program_version(backup->program_version) >= 20025)
-			crc = pgFileGetCRC32C(map_path, false);
-		else
-			crc = pgFileGetCRC32(map_path, false);
-#endif /* PG_VERSION_NUM < 120000 */
 
 		if ((*tablespace_map)->crc != crc)
 			elog(ERROR, "Invalid CRC of tablespace map file \"%s\" : %X. Expected %X, "

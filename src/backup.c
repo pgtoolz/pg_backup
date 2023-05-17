@@ -162,7 +162,7 @@ do_backup_pg(InstanceState *instanceState, PGconn *backup_conn,
 
 	if (prev_backup)
 	{
-		if (parse_program_version(prev_backup->program_version) > parse_program_version(PROGRAM_VERSION))
+		if (prev_backup->program_version_num > PROGRAM_VERSION_NUM)
 			elog(ERROR, "%s binary version is %s, but backup %s version is %s. "
 						"%s do not guarantee to be forward compatible. "
 						"Please upgrade %s binary.",
@@ -614,8 +614,8 @@ pgdata_basic_setup(ConnectionOptions conn_opt, PGNodeInfo *nodeInfo)
 		elog(WARNING, "Current PostgreSQL role is superuser. "
 						"It is not recommended to run %s under superuser.", PROGRAM_NAME);
 
-	strlcpy(current.server_version, nodeInfo->server_version_str,
-			sizeof(current.server_version));
+	current.server_version_num = nodeInfo->server_version_num;
+	strlcpy(current.server_version, nodeInfo->server_version, sizeof(nodeInfo->server_version));
 
 	return cur_conn;
 }
@@ -646,8 +646,9 @@ do_backup(InstanceState *instanceState, pgSetBackupParams *set_backup_params,
 	/* XXX BACKUP_ID change it when backup_id wouldn't match start_time */
 	current.start_time = current.backup_id;
 
+	current.program_version_num = PROGRAM_VERSION_NUM;
 	strlcpy(current.program_version, PROGRAM_VERSION,
-			sizeof(current.program_version));
+			sizeof(PROGRAM_VERSION));
 
 	current.compress_alg = instance_config.compress_alg;
 	current.compress_level = instance_config.compress_level;
@@ -677,8 +678,8 @@ do_backup(InstanceState *instanceState, pgSetBackupParams *set_backup_params,
 	if (current.from_replica)
 		elog(INFO, "Backup %s is going to be taken from standby", backup_id_of(&current));
 
-	/* TODO, print PostgreSQL full version */
-	//elog(INFO, "PostgreSQL version: %s", nodeInfo.server_version_str);
+	/* Report PostgreSQL full version */
+	elog(INFO, "PostgreSQL version: %s", nodeInfo.server_version);
 
 	/*
 	 * Ensure that backup directory was initialized for the same PostgreSQL
@@ -783,26 +784,26 @@ static void
 check_server_version(PGconn *conn, PGNodeInfo *nodeInfo)
 {
 	/* confirm server version */
-	nodeInfo->server_version = PQserverVersion(conn);
+	nodeInfo->server_version_num = PQserverVersion(conn);
 
-	if (nodeInfo->server_version == 0)
-		elog(ERROR, "Unknown server version %d", nodeInfo->server_version);
+	if (nodeInfo->server_version_num == 0)
+		elog(ERROR, "Unknown server version %d", nodeInfo->server_version_num);
 
-	if (nodeInfo->server_version < 100000)
+	if (nodeInfo->server_version_num < 100000)
 		elog(ERROR,
 			 "server version is %s, must be %s or higher",
-			 nodeInfo->server_version_str, "10");
+			 nodeInfo->server_version, "10");
 
-	sprintf(nodeInfo->server_version_str, "%d",
-			nodeInfo->server_version / 10000);
+	snprintf(nodeInfo->server_version, sizeof(nodeInfo->server_version),
+		"%s", parse_server_version_new(nodeInfo->server_version_num));
 
 	/*
 	 * Check major version of connected PostgreSQL and major version of
 	 * compiled PostgreSQL.
 	 */
-	if (strcmp(nodeInfo->server_version_str, PG_MAJORVERSION) != 0)
-		elog(ERROR, "%s was built with PostgreSQL %s, but connection is made with %s",
-			 PROGRAM_NAME, PG_MAJORVERSION, nodeInfo->server_version_str);
+	if ((nodeInfo->server_version_num / 10000) != PG_MAJORVERSION_NUM)
+		elog(ERROR, "%s was built with PostgreSQL %d, but connection is made with %d",
+			 PROGRAM_NAME, PG_MAJORVERSION_NUM, (nodeInfo->server_version_num / 10000));
 }
 
 /*
@@ -903,7 +904,7 @@ pg_start_backup(const char *label, bool smooth, pgBackup *backup,
 	 */
 	backup_in_progress = true;
 	stop_callback_params.conn = conn;
-	stop_callback_params.server_version = nodeInfo->server_version;
+	stop_callback_params.server_version = nodeInfo->server_version_num;
 	pgut_atexit_push(backup_stopbackup_callback, &stop_callback_params);
 
 	/* Extract timeline and LSN from results of pg_start_backup() */
@@ -1391,7 +1392,7 @@ pg_create_restore_point(PGconn *conn, time_t backup_start_time)
 }
 
 void
-pg_stop_backup_send(PGconn *conn, int server_version, bool is_started_on_replica, char **query_text)
+pg_stop_backup_send(PGconn *conn, int server_version_num, bool is_started_on_replica, char **query_text)
 {
 	static const char
 		stop_backup_on_master_query[] =
@@ -1432,7 +1433,7 @@ pg_stop_backup_send(PGconn *conn, int server_version, bool is_started_on_replica
 			" FROM pg_catalog.pg_stop_backup(false, false)";
 
 	const char * const stop_backup_query =
-		server_version >= 150000 ?
+		server_version_num >= 150000 ?
 			(is_started_on_replica ?
 				stop_backup_on_replica_query :
 				stop_backup_on_master_query
@@ -1476,7 +1477,7 @@ pg_stop_backup_send(PGconn *conn, int server_version, bool is_started_on_replica
  *  -
  */
 void
-pg_stop_backup_consume(PGconn *conn, int server_version,
+pg_stop_backup_consume(PGconn *conn, int server_version_num,
 		uint32 timeout, const char *query_text,
 		PGStopBackupResult *result)
 {
@@ -1505,11 +1506,10 @@ pg_stop_backup_consume(PGconn *conn, int server_version,
 			if (interrupted)
 			{
 				pgut_cancel(conn);
-#if PG_VERSION_NUM >= 150000
-				elog(ERROR, "interrupted during waiting for pg_backup_stop");
-#else
-				elog(ERROR, "interrupted during waiting for pg_stop_backup");
-#endif
+				if (server_version_num >= 150000)
+					elog(ERROR, "interrupted during waiting for pg_backup_stop");
+				else
+					elog(ERROR, "interrupted during waiting for pg_stop_backup");
 			}
 
 			if (pg_stop_backup_timeout == 1)
@@ -1521,12 +1521,11 @@ pg_stop_backup_consume(PGconn *conn, int server_version,
 			 */
 			if (pg_stop_backup_timeout > timeout)
 			{
+				if (server_version_num >= 150000)
+					elog(ERROR, "pg_backup_stop doesn't answer in %d seconds, canceling it", timeout);
+				else
+					elog(ERROR, "pg_stop_backup doesn't answer in %d seconds, canceling it", timeout);
 				pgut_cancel(conn);
-#if PG_VERSION_NUM >= 150000
-				elog(ERROR, "pg_backup_stop doesn't answer in %d seconds, cancel it", timeout);
-#else
-				elog(ERROR, "pg_stop_backup doesn't answer in %d seconds, cancel it", timeout);
-#endif
 			}
 		}
 		else
@@ -1538,11 +1537,10 @@ pg_stop_backup_consume(PGconn *conn, int server_version,
 
 	/* Check successfull execution of pg_stop_backup() */
 	if (!query_result)
-#if PG_VERSION_NUM >= 150000
-		elog(ERROR, "pg_backup_stop() failed");
-#else
-		elog(ERROR, "pg_stop_backup() failed");
-#endif
+		if (server_version_num >= 150000)
+			elog(ERROR, "pg_backup_stop() failed");
+		else
+			elog(ERROR, "pg_stop_backup() failed");
 	else
 	{
 		switch (PQresultStatus(query_result))
@@ -1674,13 +1672,13 @@ pg_stop_backup(InstanceState *instanceState, pgBackup *backup, PGconn *pg_startb
 		pg_create_restore_point(pg_startbackup_conn, backup->start_time);
 
 	/* Execute pg_stop_backup using PostgreSQL connection */
-	pg_stop_backup_send(pg_startbackup_conn, nodeInfo->server_version, backup->from_replica, &query_text);
+	pg_stop_backup_send(pg_startbackup_conn, nodeInfo->server_version_num, backup->from_replica, &query_text);
 
 	/*
 	 * Wait for the result of pg_stop_backup(), but no longer than
 	 * archive_timeout seconds
 	 */
-	pg_stop_backup_consume(pg_startbackup_conn, nodeInfo->server_version, timeout, query_text, &stop_backup_result);
+	pg_stop_backup_consume(pg_startbackup_conn, nodeInfo->server_version_num, timeout, query_text, &stop_backup_result);
 
 	if (backup->stream)
 	{

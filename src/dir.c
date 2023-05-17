@@ -248,65 +248,6 @@ pgFileGetCRC32C(const char *file_path, bool missing_ok)
 	return crc;
 }
 
-#if PG_VERSION_NUM < 120000
-/*
- * Read the local file to compute its CRC using traditional algorithm.
- * (*_TRADITIONAL_CRC32 macros)
- * This was used only in version 2.0.22--2.0.24
- * And never used for PG >= 12
- * To be removed with end of PG-11 support
- */
-pg_crc32
-pgFileGetCRC32(const char *file_path, bool missing_ok)
-{
-	FILE	   *fp;
-	pg_crc32	crc = 0;
-	char	   *buf;
-	size_t		len = 0;
-
-	INIT_TRADITIONAL_CRC32(crc);
-
-	/* open file in binary read mode */
-	fp = fopen(file_path, PG_BINARY_R);
-	if (fp == NULL)
-	{
-		if (missing_ok && errno == ENOENT)
-		{
-			FIN_TRADITIONAL_CRC32(crc);
-			return crc;
-		}
-
-		elog(ERROR, "Cannot open file \"%s\": %s",
-			file_path, strerror(errno));
-	}
-
-	/* disable stdio buffering */
-	setvbuf(fp, NULL, _IONBF, BUFSIZ);
-	buf = pgut_malloc(STDIO_BUFSIZE);
-
-	/* calc CRC of file */
-	do
-	{
-		if (interrupted)
-			elog(ERROR, "interrupted during CRC calculation");
-
-		len = fread(buf, 1, STDIO_BUFSIZE, fp);
-
-		if (ferror(fp))
-			elog(ERROR, "Cannot read \"%s\": %s", file_path, strerror(errno));
-
-		COMP_TRADITIONAL_CRC32(crc, buf, len);
-	}
-	while (!feof(fp));
-
-	FIN_TRADITIONAL_CRC32(crc);
-	fclose(fp);
-	pg_free(buf);
-
-	return crc;
-}
-#endif /* PG_VERSION_NUM < 120000 */
-
 /*
  * Read the local file to compute its CRC.
  * We cannot make decision about file decompression because

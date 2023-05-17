@@ -386,9 +386,11 @@ print_backup_json_object(PQExpBuffer buf, pgBackup *backup)
 	json_add_key(buf, "checksum-version", json_level);
 	appendPQExpBuffer(buf, "%u", backup->checksum_version);
 
-	json_add_value(buf, "program-version", backup->program_version,
+	json_add_value(buf, "program-version",
+					backup->program_version_num > 0 ? backup->program_version : "0",
 					json_level, true);
-	json_add_value(buf, "server-version", backup->server_version,
+	json_add_value(buf, "server-version",
+					backup->server_version_num > 0 ? backup->server_version : "0",
 					json_level, true);
 
 	json_add_key(buf, "current-tli", json_level);
@@ -572,7 +574,7 @@ show_instance_plain(const char *instance_name, parray *backup_list, bool show_na
 		cur++;
 
 		/* Version */
-		row->version = backup->server_version[0] ?
+		row->version = backup->server_version_num > 0 ?
 			backup->server_version : "----";
 		widths[cur] = Max(widths[cur], strlen(row->version));
 		cur++;

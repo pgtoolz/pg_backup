@@ -18,48 +18,36 @@
 
 #if PG_VERSION_NUM >= 120000
 
-#define INIT_CRC32_COMPAT(backup_version, crc) \
+#define INIT_CRC32_COMPAT(crc) \
 do { \
-	Assert(backup_version >= 20025); \
 	INIT_CRC32C(crc); \
 } while (0)
 
-#define COMP_CRC32_COMPAT(backup_version, crc, data, len) \
+#define COMP_CRC32_COMPAT(crc, data, len) \
 do { \
-	Assert(backup_version >= 20025); \
 	COMP_CRC32C((crc), (data), (len)); \
 } while (0)
 
-#define FIN_CRC32_COMPAT(backup_version, crc) \
+#define FIN_CRC32_COMPAT(crc) \
 do { \
-	Assert(backup_version >= 20025); \
 	FIN_CRC32C(crc); \
 } while (0)
 
 #else /* PG_VERSION_NUM < 120000 */
 
-#define INIT_CRC32_COMPAT(backup_version, crc) \
+#define INIT_CRC32_COMPAT(crc) \
 do { \
-	if (backup_version <= 20021 || backup_version >= 20025) \
-		INIT_CRC32C(crc); \
-	else \
-		INIT_TRADITIONAL_CRC32(crc); \
+	INIT_CRC32C(crc); \
 } while (0)
 
-#define COMP_CRC32_COMPAT(backup_version, crc, data, len) \
+#define COMP_CRC32_COMPAT(crc, data, len) \
 do { \
-	if (backup_version <= 20021 || backup_version >= 20025) \
-		COMP_CRC32C((crc), (data), (len)); \
-	else \
-		COMP_TRADITIONAL_CRC32(crc, data, len); \
+	COMP_CRC32C((crc), (data), (len)); \
 } while (0)
 
-#define FIN_CRC32_COMPAT(backup_version, crc) \
+#define FIN_CRC32_COMPAT(crc) \
 do { \
-	if (backup_version <= 20021 || backup_version >= 20025) \
-		FIN_CRC32C(crc); \
-	else \
-		FIN_TRADITIONAL_CRC32(crc); \
+	FIN_CRC32C(crc); \
 } while (0)
 
 #endif /* PG_VERSION_NUM < 120000 */
