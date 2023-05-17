@@ -390,12 +390,11 @@ class ProbackupTest(object):
             for node in self.nodes_to_cleanup:
                 node.cleanup()
             self.del_test_dir(self.module_name, self.fname)
-
-        else:
-            for node in self.nodes_to_cleanup:
-                # TODO make decorator with proper stop() vs cleanup()
-                node._try_shutdown(max_attempts=1)
-                # node.cleanup()
+#        else:
+#            for node in self.nodes_to_cleanup:
+#                # TODO make decorator with proper stop() vs cleanup()
+#                node._try_shutdown(max_attempts=1)
+#                # node.cleanup()
 
         self.nodes_to_cleanup.clear()
 
