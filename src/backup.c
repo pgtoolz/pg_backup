@@ -801,9 +801,9 @@ check_server_version(PGconn *conn, PGNodeInfo *nodeInfo)
 	 * Check major version of connected PostgreSQL and major version of
 	 * compiled PostgreSQL.
 	 */
-	if ((nodeInfo->server_version_num / 10000) != PG_MAJORVERSION_NUM)
+	if ((nodeInfo->server_version_num / 10000) != (PG_VERSION_NUM / 10000))
 		elog(ERROR, "%s was built with PostgreSQL %d, but connection is made with %d",
-			 PROGRAM_NAME, PG_MAJORVERSION_NUM, (nodeInfo->server_version_num / 10000));
+			 PROGRAM_NAME, (PG_VERSION_NUM / 10000), (nodeInfo->server_version_num / 10000));
 }
 
 /*

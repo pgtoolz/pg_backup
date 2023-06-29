@@ -1398,7 +1398,7 @@ update_recovery_options(InstanceState *instanceState, pgBackup *backup,
 
 {
 	char		postgres_auto_path[MAXPGPATH];
-	char		postgres_auto_path_tmp[MAXPGPATH];
+	char		postgres_auto_path_tmp[MAXPGPATH+10];
 	char		path[MAXPGPATH];
 	FILE	   *fp = NULL;
 	FILE	   *fp_tmp = NULL;

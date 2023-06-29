@@ -65,10 +65,10 @@ pgBackupValidate(pgBackup *backup, pgRestoreParams *params)
 				backup->program_version, PROGRAM_NAME, PROGRAM_NAME);
 
 	/* Check backup server version */
-	if ((backup->server_version_num / 10000) != PG_MAJORVERSION_NUM)
+	if ((backup->server_version_num / 10000) != (PG_VERSION_NUM / 10000))
         elog(ERROR, "Backup %s has server version %d, but current %s binary "
 					"compiled with server version %d",
-                backup_id_of(backup), (backup->server_version_num / 10000), PROGRAM_NAME, PG_MAJORVERSION_NUM);
+                backup_id_of(backup), (backup->server_version_num / 10000), PROGRAM_NAME, (PG_VERSION_NUM / 10000));
 
 	if (backup->status == BACKUP_STATUS_RUNNING)
 	{

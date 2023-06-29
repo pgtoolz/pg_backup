@@ -63,13 +63,11 @@ ConfigOption instance_options[] =
 		&instance_config.system_identifier, SOURCE_FILE_STRICT, 0,
 		OPTION_INSTANCE_GROUP, 0, option_get_value
 	},
-#if PG_VERSION_NUM >= 110000
 	{
 		'u', 201, "xlog-seg-size",
 		&instance_config.xlog_seg_size, SOURCE_FILE_STRICT, 0,
 		OPTION_INSTANCE_GROUP, 0, option_get_value
 	},
-#endif
 	/* Connection options */
 	{
 		's', 'd', "pgdatabase",
@@ -358,16 +356,6 @@ init_config(InstanceConfig *config, const char *instance_name)
 {
 	MemSet(config, 0, sizeof(InstanceConfig));
 
-	/*
-	 * Starting from PostgreSQL 11 WAL segment size may vary. Prior to
-	 * PostgreSQL 10 xlog_seg_size is equal to XLOG_SEG_SIZE.
-	 */
-#if PG_VERSION_NUM >= 110000
-	config->xlog_seg_size = 0;
-#else
-	config->xlog_seg_size = XLOG_SEG_SIZE;
-#endif
-
 	config->archive_timeout = ARCHIVE_TIMEOUT_DEFAULT;
 
 	/* Copy logger defaults */
@@ -410,13 +398,11 @@ readInstanceConfigFile(InstanceState *instanceState)
 			&instance->system_identifier, SOURCE_FILE_STRICT, 0,
 			OPTION_INSTANCE_GROUP, 0, option_get_value
 		},
-	#if PG_VERSION_NUM >= 110000
 		{
 			'u', 201, "xlog-seg-size",
 			&instance->xlog_seg_size, SOURCE_FILE_STRICT, 0,
 			OPTION_INSTANCE_GROUP, 0, option_get_value
 		},
-	#endif
 		/* Connection options */
 		{
 			's', 'd', "pgdatabase",
@@ -618,12 +604,6 @@ readInstanceConfigFile(InstanceState *instanceState)
 
 	if (compress_alg)
 		instance->compress_alg = parse_compress_alg(compress_alg);
-
-#if PG_VERSION_NUM >= 110000
-	/* If for some reason xlog-seg-size is missing, then set it to 16MB */
-	if (!instance->xlog_seg_size)
-		instance->xlog_seg_size = DEFAULT_XLOG_SEG_SIZE;
-#endif
 
 	return instance;
 }

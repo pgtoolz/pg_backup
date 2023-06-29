@@ -452,7 +452,7 @@ parse_server_version_new(uint32 server_version_num)
 	if (server_version_num >= 100000)
 	{
 		server_version = pgut_malloc0(50);
-		snprintf(server_version, sizeof(server_version), "%d.%d",
+		snprintf(server_version, 50, "%d.%d",
 			server_version_num / 10000, server_version_num % 1000);
 	}
 	return server_version;
@@ -472,7 +472,7 @@ parse_program_version_new(uint32 program_version_num)
 	if (program_version > 0)
 	{
 		program_version = pgut_malloc0(100);
-		snprintf(program_version, sizeof(program_version), "%d.%d.%d",
+		snprintf(program_version, sizeof(100), "%d.%d.%d",
 			program_version_num / 10000,
 			(program_version_num / 100) % 100,
 			program_version_num % 100);
