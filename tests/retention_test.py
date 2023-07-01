@@ -85,7 +85,7 @@ class RetentionTest(ProbackupTest, unittest.TestCase):
                 backup_dir,
                 'backups',
                 'node',
-                "pg_probackup.conf"), "a") as conf:
+                "pg_backup.conf"), "a") as conf:
             conf.write("retention-redundancy = 1\n")
             conf.write("retention-window = 1\n")
 
@@ -98,7 +98,7 @@ class RetentionTest(ProbackupTest, unittest.TestCase):
         backups = os.path.join(backup_dir, 'backups', 'node')
         days_delta = 5
         for backup in os.listdir(backups):
-            if backup == 'pg_probackup.conf':
+            if backup == 'pg_backup.conf':
                 continue
             with open(
                     os.path.join(
@@ -140,7 +140,7 @@ class RetentionTest(ProbackupTest, unittest.TestCase):
 
         backups = os.path.join(backup_dir, 'backups', 'node')
         for backup in os.listdir(backups):
-            if backup == 'pg_probackup.conf':
+            if backup == 'pg_backup.conf':
                 continue
             with open(
                     os.path.join(
@@ -181,7 +181,7 @@ class RetentionTest(ProbackupTest, unittest.TestCase):
 
         backups = os.path.join(backup_dir, 'backups', 'node')
         for backup in os.listdir(backups):
-            if backup == 'pg_probackup.conf':
+            if backup == 'pg_backup.conf':
                 continue
             with open(
                     os.path.join(
@@ -320,7 +320,7 @@ class RetentionTest(ProbackupTest, unittest.TestCase):
         # Purge backups
         backups = os.path.join(backup_dir, 'backups', 'node')
         for backup in os.listdir(backups):
-            if backup not in [page_id_a2, page_id_b2, 'pg_probackup.conf']:
+            if backup not in [page_id_a2, page_id_b2, 'pg_backup.conf']:
                 with open(
                         os.path.join(
                             backups, backup, "backup.control"), "a") as conf:
@@ -544,7 +544,7 @@ class RetentionTest(ProbackupTest, unittest.TestCase):
         # Purge backups
         backups = os.path.join(backup_dir, 'backups', 'node')
         for backup in os.listdir(backups):
-            if backup not in [page_id_a2, page_id_b2, 'pg_probackup.conf']:
+            if backup not in [page_id_a2, page_id_b2, 'pg_backup.conf']:
                 with open(
                         os.path.join(
                             backups, backup, "backup.control"), "a") as conf:
@@ -668,7 +668,7 @@ class RetentionTest(ProbackupTest, unittest.TestCase):
         # Purge backups
         backups = os.path.join(backup_dir, 'backups', 'node')
         for backup in os.listdir(backups):
-            if backup in [page_id_a1, page_id_b3, 'pg_probackup.conf']:
+            if backup in [page_id_a1, page_id_b3, 'pg_backup.conf']:
                 continue
 
             with open(
@@ -904,7 +904,7 @@ class RetentionTest(ProbackupTest, unittest.TestCase):
         # Purge backups
         backups = os.path.join(backup_dir, 'backups', 'node')
         for backup in os.listdir(backups):
-            if backup in [page_id_a3, page_id_b3, 'pg_probackup.conf']:
+            if backup in [page_id_a3, page_id_b3, 'pg_backup.conf']:
                 continue
 
             with open(
@@ -1160,7 +1160,7 @@ class RetentionTest(ProbackupTest, unittest.TestCase):
         # Purge backups
         backups = os.path.join(backup_dir, 'backups', 'node')
         for backup in os.listdir(backups):
-            if backup in [page_id_a3, page_id_b3, 'pg_probackup.conf']:
+            if backup in [page_id_a3, page_id_b3, 'pg_backup.conf']:
                 continue
 
             with open(
@@ -1289,7 +1289,7 @@ class RetentionTest(ProbackupTest, unittest.TestCase):
         # Purge backups
         backups = os.path.join(backup_dir, 'backups', 'node')
         for backup in os.listdir(backups):
-            if backup in [page_id_b3, 'pg_probackup.conf']:
+            if backup in [page_id_b3, 'pg_backup.conf']:
                 continue
 
             with open(
@@ -1362,7 +1362,7 @@ class RetentionTest(ProbackupTest, unittest.TestCase):
         # Purge backups
         backups = os.path.join(backup_dir, 'backups', 'node')
         for backup in os.listdir(backups):
-            if backup in [page_id_b3, 'pg_probackup.conf']:
+            if backup in [page_id_b3, 'pg_backup.conf']:
                 continue
 
             with open(

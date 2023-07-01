@@ -555,11 +555,11 @@ pg_backup add-instance -B <replaceable>backup_dir</replaceable> -D <replaceable>
       subdirectories under the <filename>backups/</filename> and <filename>wal/</filename> directories of
       the backup catalog. The
       <filename>backups/<replaceable>instance_name</replaceable></filename> directory contains
-      the <filename>pg_probackup.conf</filename> configuration file that controls
+      the <filename>pg_backup.conf</filename> configuration file that controls
       <application>pg_backup</application> settings for this backup instance. If you run this
       command with the
       <link linkend="pbk-remote-server-opts">remote_options</link>, the specified
-      parameters will be added to <filename>pg_probackup.conf</filename>.
+      parameters will be added to <filename>pg_backup.conf</filename>.
     </para>
     <para>
       For details on how to fine-tune <application>pg_backup</application> configuration, see
@@ -2015,7 +2015,7 @@ pg_backup backup -B <replaceable>backup_dir</replaceable> --instance <replaceabl
     <title>Configuring <application>pg_backup</application></title>
     <para>
       Once the backup catalog is initialized and a new backup instance
-      is added, you can use the <filename>pg_probackup.conf</filename> configuration file
+      is added, you can use the <filename>pg_backup.conf</filename> configuration file
       located in the
       <filename><replaceable>backup_dir</replaceable>/backups/<replaceable>instance_name</replaceable></filename>
       directory to fine-tune <application>pg_backup</application> configuration.
@@ -2026,17 +2026,17 @@ pg_backup backup -B <replaceable>backup_dir</replaceable> --instance <replaceabl
       <productname>PostgreSQL</productname> connection. To avoid specifying
       <link linkend="pbk-connection-opts">connection options</link>
       each time on the command line, you can set them in the
-      <filename>pg_probackup.conf</filename> configuration file using the
+      <filename>pg_backup.conf</filename> configuration file using the
       <xref linkend="pbk-set-config"/> command.
     </para>
     <note>
       <para>
         It is <emphasis role="strong">not recommended</emphasis>
-        to edit <filename>pg_probackup.conf</filename> manually.
+        to edit <filename>pg_backup.conf</filename> manually.
       </para>
     </note>
     <para>
-      Initially, <filename>pg_probackup.conf</filename> contains the following settings:
+      Initially, <filename>pg_backup.conf</filename> contains the following settings:
     </para>
     <itemizedlist spacing="compact">
       <listitem>
@@ -2071,7 +2071,7 @@ pg_backup set-config -B <replaceable>backup_dir</replaceable> --instance <replac
 pg_backup show-config -B <replaceable>backup_dir</replaceable> --instance <replaceable>instance_name</replaceable>
 </programlisting>
     <para>
-      You can override the settings defined in <filename>pg_probackup.conf</filename> when
+      You can override the settings defined in <filename>pg_backup.conf</filename> when
       running <application>pg_backup</application> <link linkend="pbk-commands">commands</link>
       via the corresponding environment variables and/or command line
       options.
@@ -2080,7 +2080,7 @@ pg_backup show-config -B <replaceable>backup_dir</replaceable> --instance <repla
   <refsect2 id="pbk-specifying-connection-settings">
     <title>Specifying Connection Settings</title>
     <para>
-      If you define connection settings in the <filename>pg_probackup.conf</filename>
+      If you define connection settings in the <filename>pg_backup.conf</filename>
       configuration file, you can omit connection options in all the
       subsequent <application>pg_backup</application> commands. However, if the corresponding
       environment variables are set, they get higher priority. The
@@ -2861,7 +2861,7 @@ pg_backup show -B <replaceable>backup_dir</replaceable> [--instance <replaceable
       </para>
       <para>
         To configure retention policy, set one or more of the
-        following variables in the <filename>pg_probackup.conf</filename> file via
+        following variables in the <filename>pg_backup.conf</filename> file via
         <xref linkend="pbk-set-config"/>:
       </para>
       <programlisting>
@@ -3534,7 +3534,7 @@ pg_backup add-instance -B <replaceable>backup_dir</replaceable> -D <replaceable>
       <para>
         Initializes a new backup instance inside the backup catalog
         <replaceable>backup_dir</replaceable> and generates the
-        <filename>pg_probackup.conf</filename> configuration file that controls
+        <filename>pg_backup.conf</filename> configuration file that controls
         <application>pg_backup</application> settings for the cluster with the specified
         <replaceable>data_dir</replaceable> data directory.
       </para>
@@ -3567,7 +3567,7 @@ pg_backup set-config -B <replaceable>backup_dir</replaceable> --instance <replac
 </programlisting>
       <para>
         Adds the specified connection, compression, retention and logging
-        settings into the <filename>pg_probackup.conf</filename>
+        settings into the <filename>pg_backup.conf</filename>
         configuration file, or modifies the previously defined values.
       </para>
       <para>
@@ -3576,7 +3576,7 @@ pg_backup set-config -B <replaceable>backup_dir</replaceable> --instance <replac
       </para>
       <para>
         It is <emphasis role="strong">not recommended</emphasis> to
-        edit <filename>pg_probackup.conf</filename> manually.
+        edit <filename>pg_backup.conf</filename> manually.
       </para>
     </refsect3>
     <refsect3 id="pbk-set-backup" xreflabel="set-backup">
@@ -3616,7 +3616,7 @@ pg_backup set-backup -B <replaceable>backup_dir</replaceable> --instance <replac
 pg_backup show-config -B <replaceable>backup_dir</replaceable> --instance <replaceable>instance_name</replaceable> [--format=plain|json]
 </programlisting>
       <para>
-        Displays the contents of the <filename>pg_probackup.conf</filename> configuration
+        Displays the contents of the <filename>pg_backup.conf</filename> configuration
         file located in the
         <filename><replaceable>backup_dir</replaceable>/backups/<replaceable>instance_name</replaceable></filename>
         directory. You can specify the
@@ -3625,7 +3625,7 @@ pg_backup show-config -B <replaceable>backup_dir</replaceable> --instance <repla
         shown as plain text.
       </para>
       <para>
-        To edit <filename>pg_probackup.conf</filename>, use the
+        To edit <filename>pg_backup.conf</filename>, use the
         <xref linkend="pbk-set-config"/> command.
       </para>
     </refsect3>
@@ -4480,7 +4480,7 @@ pg_backup catchup -b <replaceable>catchup_mode</replaceable>
       commands. If the option value can be derived from an environment
       variable, this variable is specified below the command-line
       option, in the uppercase. Some values can be taken from the
-      <filename>pg_probackup.conf</filename> configuration file located in the backup
+      <filename>pg_backup.conf</filename> configuration file located in the backup
       catalog.
     </para>
     <para>
@@ -4489,7 +4489,7 @@ pg_backup catchup -b <replaceable>catchup_mode</replaceable>
     <para>
       If an option is specified using more than one method,
       command-line input has the highest priority, while the
-      <filename>pg_probackup.conf</filename> settings have the lowest priority.
+      <filename>pg_backup.conf</filename> settings have the lowest priority.
     </para>
     <refsect3 id="pbk-common-options">
       <title>Common Options</title>
@@ -4525,7 +4525,7 @@ pg_backup catchup -b <replaceable>catchup_mode</replaceable>
         database cluster. This option is mandatory only for the
         <xref linkend="pbk-add-instance"/> command.
         Other commands can take its value from the <envar>PGDATA</envar> environment
-        variable, or from the <filename>pg_probackup.conf</filename> configuration file.
+        variable, or from the <filename>pg_backup.conf</filename> configuration file.
       </para>
       </listitem>
       </varlistentry>
@@ -4775,7 +4775,7 @@ pg_backup catchup -b <replaceable>catchup_mode</replaceable>
       <listitem>
       <para>
         Deletes backups that do not conform to the retention policy
-        defined in the <filename>pg_probackup.conf</filename> configuration file.
+        defined in the <filename>pg_backup.conf</filename> configuration file.
       </para>
       </listitem>
       </varlistentry>
@@ -4978,7 +4978,7 @@ pg_backup catchup -b <replaceable>catchup_mode</replaceable>
         <listitem>
         <para>
           Defines the format of the console log. Only set from the command line. Note that you cannot
-          specify this option in the <filename>pg_probackup.conf</filename> configuration file through
+          specify this option in the <filename>pg_backup.conf</filename> configuration file through
           the <xref linkend="pbk-set-config"/> command and that the <xref linkend="pbk-backup"/>
           command also treats this option specified in the configuration file as an error.
           Possible values are:
@@ -5088,7 +5088,7 @@ pg_backup catchup -b <replaceable>catchup_mode</replaceable>
         connection is used only for managing backup process, so you
         can connect to any existing database. If this option is not
         provided on the command line, <envar>PGDATABASE</envar> environment variable,
-        or the <filename>pg_probackup.conf</filename> configuration file, <application>pg_backup</application>
+        or the <filename>pg_backup.conf</filename> configuration file, <application>pg_backup</application>
         tries to take this value from the <envar>PGUSER</envar> environment variable,
         or from the current user name if <envar>PGUSER</envar> variable is not set.
       </para>
@@ -5243,7 +5243,7 @@ pg_backup catchup -b <replaceable>catchup_mode</replaceable>
         <parameter>restore_command</parameter>. Use the <literal>%p</literal>
         variable as the value for this option or explicitly specify the path to a file
         outside of the data directory. If you skip this option, the path
-        specified in <filename>pg_probackup.conf</filename> will be used.
+        specified in <filename>pg_backup.conf</filename> will be used.
       </para>
       </listitem>
       </varlistentry>

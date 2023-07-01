@@ -49,6 +49,7 @@ int
 do_add_instance(InstanceState *instanceState, InstanceConfig *instance)
 {
 	struct stat st;
+	ControlFileData *ControlFile = NULL;
 	CatalogState *catalogState = instanceState->catalog_state;
 
 	/* PGDATA is always required */
@@ -56,10 +57,19 @@ do_add_instance(InstanceState *instanceState, InstanceConfig *instance)
 		elog(ERROR, "Required parameter not specified: PGDATA "
 						 "(-D, --pgdata)");
 
+	/* read PG_VERSION */
+	instance->server_major_version = get_pg_version(FIO_DB_HOST, instance->pgdata);
+	// bail out if major version is below PG10
+	if (instance->server_major_version < 10)
+		elog(ERROR, "PostgreSQL version must be 10 or higher");
 	/* Read system_identifier from PGDATA */
-	instance->system_identifier = get_system_identifier(FIO_DB_HOST, instance->pgdata, false);
-	/* Starting from PostgreSQL 11 read WAL segment size from PGDATA */
-	instance->xlog_seg_size = get_xlog_seg_size(instance->pgdata);
+	ControlFile = get_ControlFileData(FIO_DB_HOST, instance->pgdata, false);
+	instance->system_identifier = ControlFile->system_identifier;
+
+	if (instance->server_major_version >= 11)
+		instance->xlog_seg_size = ControlFile->xlog_seg_size;
+	else
+		instance->xlog_seg_size = XLOG_SEG_SIZE;
 
 	/* Ensure that all root directories already exist */
 	/* TODO maybe call do_init() here instead of error?*/
@@ -91,7 +101,7 @@ do_add_instance(InstanceState *instanceState, InstanceConfig *instance)
 
 	/*
 	 * Write initial configuration file.
-	 * system-identifier, xlog-seg-size and pgdata are set in init subcommand
+	 * system-identifier, xlog-seg-size, server-major-version and pgdata are set in init subcommand
 	 * and will never be updated.
 	 *
 	 * We need to manually set options source to save them to the configuration
@@ -100,6 +110,8 @@ do_add_instance(InstanceState *instanceState, InstanceConfig *instance)
 	config_set_opt(instance_options, &instance->system_identifier,
 				   SOURCE_FILE);
 	config_set_opt(instance_options, &instance->xlog_seg_size,
+				   SOURCE_FILE);
+	config_set_opt(instance_options, &instance->server_major_version,
 				   SOURCE_FILE);
 
 	/* Kludge: do not save remote options into config */

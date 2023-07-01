@@ -1444,7 +1444,7 @@ class CompatibilityTest(ProbackupTest, unittest.TestCase):
         self.init_pb(backup_dir, old_binary=True)
         self.add_instance(backup_dir, 'node', node, old_binary=True)
 
-        # add deprecated options (using probackup< 2.6) into pg_probackup.conf
+        # add deprecated options (using probackup< 2.6) into pg_backup.conf
         # don't care about option values, we can use random values here
         self.set_config(
             backup_dir, 'node',

@@ -63,7 +63,7 @@ extern const char  *PROGRAM_EMAIL;
 #define PG_TBLSPC_DIR			"pg_tblspc"
 #define PG_GLOBAL_DIR			"global"
 #define BACKUP_CONTROL_FILE		"backup.control"
-#define BACKUP_CATALOG_CONF_FILE	"pg_probackup.conf"
+#define BACKUP_CATALOG_CONF_FILE	"pg_backup.conf"
 #define BACKUP_LOCK_FILE		"backup.pid"
 #define BACKUP_RO_LOCK_FILE		"backup_ro.pid"
 #define DATABASE_FILE_LIST		"backup_content.control"
@@ -340,6 +340,7 @@ typedef struct InstanceConfig
 {
 	uint64		system_identifier;
 	uint32		xlog_seg_size;
+	uint32      server_major_version;
 
 	char	   *pgdata;
 	ConnectionOptions conn_opt;
@@ -1098,6 +1099,8 @@ extern XLogRecPtr get_next_record_lsn(const char *archivedir, XLogSegNo	segno, T
 									  uint32 wal_seg_size, int timeout, XLogRecPtr target);
 
 /* in util.c */
+extern uint32 get_pg_version(fio_location location, const char *pgdata_path);
+extern ControlFileData* get_ControlFileData(fio_location location, const char *pgdata_path, bool safe);
 extern TimeLineID get_current_timeline(PGconn *conn);
 extern TimeLineID get_current_timeline_from_control(fio_location location, const char *pgdata_path, bool safe);
 extern XLogRecPtr get_checkpoint_location(PGconn *conn);

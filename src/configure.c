@@ -59,13 +59,18 @@ ConfigOption instance_options[] =
 		OPTION_INSTANCE_GROUP, 0, option_get_value
 	},
 	{
-		'U', 200, "system-identifier",
+		'U', 199, "system-identifier",
 		&instance_config.system_identifier, SOURCE_FILE_STRICT, 0,
 		OPTION_INSTANCE_GROUP, 0, option_get_value
 	},
 	{
-		'u', 201, "xlog-seg-size",
+		'u', 200, "xlog-seg-size",
 		&instance_config.xlog_seg_size, SOURCE_FILE_STRICT, 0,
+		OPTION_INSTANCE_GROUP, 0, option_get_value
+	},
+	{
+		'u', 201, "server-major-version",
+		&instance_config.server_major_version, SOURCE_FILE_STRICT, 0,
 		OPTION_INSTANCE_GROUP, 0, option_get_value
 	},
 	/* Connection options */

@@ -163,6 +163,51 @@ get_current_timeline(PGconn *conn)
 }
 
 /* Get timeline from pg_control file */
+ControlFileData*
+get_ControlFileData(fio_location location, const char *pgdata_path, bool safe)
+{
+	size_t           size;
+	char            *buffer;
+	ControlFileData *ControlFile = NULL;
+
+	/* First fetch file... */
+	buffer = slurpFile(location, pgdata_path, XLOG_CONTROL_FILE, &size, safe);
+	if (safe && buffer == NULL)
+		return NULL;
+
+	ControlFile = pg_malloc(sizeof(ControlFileData));
+	digestControlFile(ControlFile, buffer, size);
+	pg_free(buffer);
+
+	return ControlFile;
+}
+
+/* Get PostgreSQL major version from PG_VERSION file */
+uint32
+get_pg_version(fio_location location, const char *pgdata_path)
+{
+	uint32  pg_version_num = 0;
+	char   *pg_version = NULL;
+	char   *buffer = NULL;
+	size_t  size = 0;
+	int     res = 0;
+
+	/* First fetch file... */
+	buffer = slurpFile(location, pgdata_path, "PG_VERSION", &size, false);
+	if (size == 0)
+		elog(ERROR, "PG_VERSION file is empty");
+
+	pg_version = pg_malloc(size);
+	res = sscanf(buffer, "%s\n", pg_version);
+	if (res != 1)
+		elog(ERROR, "Cannot scan content of PG_VERSION file");
+
+	pg_version_num = (uint32) atoi(pg_version);
+	pg_free(pg_version);
+	return pg_version_num;
+}
+
+/* Get timeline from pg_control file */
 TimeLineID
 get_current_timeline_from_control(fio_location location, const char *pgdata_path, bool safe)
 {
