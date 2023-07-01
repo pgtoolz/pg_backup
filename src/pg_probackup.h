@@ -338,11 +338,11 @@ typedef struct ArchiveOptions
  */
 typedef struct InstanceConfig
 {
-	uint64		system_identifier;
-	uint32		xlog_seg_size;
+	uint64      system_identifier;
+	uint32      xlog_seg_size;
 	uint32      server_major_version;
 
-	char	   *pgdata;
+	char       *pgdata;
 	ConnectionOptions conn_opt;
 
 	/* Wait timeout for WAL segment archiving */
