@@ -177,10 +177,10 @@ bool launch_agent(void)
 	}
 
 	/* Make sure that remote agent has the same version
-	 * TODO: we must also check PG version and fork edition
+	 * TODO: we must also check PG version
 	 */
 	agent_version = fio_get_agent_version();
-	if (agent_version != AGENT_PROTOCOL_VERSION)
+	if (agent_version != AGENT_PROTOCOL_VERSION_NUM)
 	{
 		char agent_version_str[1024];
 		sprintf(agent_version_str, "%d.%d.%d",
@@ -190,7 +190,7 @@ bool launch_agent(void)
 
 		elog(ERROR, "Remote agent protocol version %s does not match local program protocol version %s, "
 					"consider to upgrade %s binary",
-			agent_version_str, AGENT_PROTOCOL_VERSION_STR, PROGRAM_NAME);
+			agent_version_str, AGENT_PROTOCOL_VERSION, PROGRAM_NAME);
 	}
 
 	return true;

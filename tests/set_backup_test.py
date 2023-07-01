@@ -133,7 +133,7 @@ class SetBackupTest(ProbackupTest, unittest.TestCase):
 
         with open(os.path.join(
                 backup_dir, 'backups', 'node',
-                "pg_probackup.conf"), "a") as conf:
+                "pg_backup.conf"), "a") as conf:
             conf.write("retention-redundancy = 1\n")
 
         self.set_config(
@@ -197,7 +197,7 @@ class SetBackupTest(ProbackupTest, unittest.TestCase):
 
         backups = os.path.join(backup_dir, 'backups', 'node')
         for backup in os.listdir(backups):
-            if backup == 'pg_probackup.conf':
+            if backup == 'pg_backup.conf':
                 continue
             with open(
                     os.path.join(

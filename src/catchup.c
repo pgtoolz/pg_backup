@@ -51,7 +51,8 @@ catchup_init_state(PGNodeInfo	*source_node_info, const char *source_pgdata, cons
 	instance_config.system_identifier = get_system_identifier(FIO_DB_HOST, source_pgdata, false);
 	current.start_time = time(NULL);
 
-	strlcpy(current.program_version, PROGRAM_VERSION, sizeof(current.program_version));
+	current.program_version_num = PROGRAM_VERSION_NUM;
+	strlcpy(current.program_version, PROGRAM_VERSION, sizeof(PROGRAM_VERSION));
 
 	/* Do some compatibility checks and fill basic info about PG instance */
 	source_conn = pgdata_basic_setup(instance_config.conn_opt, source_node_info);
@@ -71,7 +72,7 @@ catchup_init_state(PGNodeInfo	*source_node_info, const char *source_pgdata, cons
 	elog(INFO, "Catchup start, %s version: %s, "
 			"PostgreSQL version: %s, "
 			"remote: %s, source-pgdata: %s, destination-pgdata: %s",
-			PROGRAM_NAME, PROGRAM_VERSION, source_node_info->server_version_str,
+			PROGRAM_NAME, PROGRAM_VERSION, source_node_info->server_version,
 			IsSshProtocol()  ? "true" : "false",
 			source_pgdata, dest_pgdata);
 
@@ -1003,13 +1004,13 @@ do_catchup(const char *source_pgdata, const char *dest_pgdata, int num_threads, 
 		pg_silent_client_messages(source_conn);
 
 		/* Execute pg_stop_backup using PostgreSQL connection */
-		pg_stop_backup_send(source_conn, source_node_info.server_version, current.from_replica, &stop_backup_query_text);
+		pg_stop_backup_send(source_conn, source_node_info.server_version_num, current.from_replica, &stop_backup_query_text);
 
 		/*
 		 * Wait for the result of pg_stop_backup(), but no longer than
 		 * archive_timeout seconds
 		 */
-		pg_stop_backup_consume(source_conn, source_node_info.server_version, timeout, stop_backup_query_text, &stop_backup_result);
+		pg_stop_backup_consume(source_conn, source_node_info.server_version_num, timeout, stop_backup_query_text, &stop_backup_result);
 
 		/* Cleanup */
 		pg_free(stop_backup_query_text);

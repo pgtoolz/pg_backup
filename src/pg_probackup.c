@@ -832,9 +832,9 @@ main(int argc, char *argv[])
 		 * 1. no --wal-file-path specified -- use cwd, ./PG_XLOG_DIR for wal files
 		 * (and ./PG_XLOG_DIR/archive_status for .done files inside do_archive_push())
 		 * in this case we can use batches and threads
-		 * 2. --wal-file-path is specified and it is the same dir as stored in pg_probackup.conf (instance_config.pgdata)
+		 * 2. --wal-file-path is specified and it is the same dir as stored in pg_backup.conf (instance_config.pgdata)
 		 * in this case we can use this path, as well as batches and thread
-		 * 3. --wal-file-path is specified and it isn't same dir as stored in pg_probackup.conf but control file present with correct system_id
+		 * 3. --wal-file-path is specified and it isn't same dir as stored in pg_backup.conf but control file present with correct system_id
 		 * in this case we can use this path, as well as batches and thread
 		 * (replica for example, see test_archive_push_sanity)
 		 * 4. --wal-file-path is specified and it is different from instance_config.pgdata and no control file found
@@ -848,7 +848,7 @@ main(int argc, char *argv[])
 			elog(ERROR, "Required parameter is not specified: --wal-file-name %%f");
 
 		if (instance_config.pgdata == NULL)
-			elog(ERROR, "Cannot read pg_probackup.conf for this instance");
+			elog(ERROR, "Cannot read pg_backup.conf for this instance");
 
 		if (!getcwd(current_dir, sizeof(current_dir)))
 			elog(ERROR, "getcwd() error");

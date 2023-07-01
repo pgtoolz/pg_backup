@@ -126,14 +126,14 @@ class OptionTest(ProbackupTest, unittest.TestCase):
 
         node.slow_start()
 
-        # syntax error in pg_probackup.conf
-        conf_file = os.path.join(backup_dir, "backups", "node", "pg_probackup.conf")
+        # syntax error in pg_backup.conf
+        conf_file = os.path.join(backup_dir, "backups", "node", "pg_backup.conf")
         with open(conf_file, "a") as conf:
             conf.write(" = INFINITE\n")
         try:
             self.backup_node(backup_dir, 'node', node)
             # we should die here because exception is what we expect to happen
-            self.assertEqual(1, 0, "Expecting Error because of garbage in pg_probackup.conf.\n Output: {0} \n CMD: {1}".format(
+            self.assertEqual(1, 0, "Expecting Error because of garbage in pg_backup.conf.\n Output: {0} \n CMD: {1}".format(
                 repr(self.output), self.cmd))
         except ProbackupException as e:
             self.assertIn(
@@ -145,14 +145,14 @@ class OptionTest(ProbackupTest, unittest.TestCase):
         self.init_pb(backup_dir)
         self.add_instance(backup_dir, 'node', node)
 
-        # invalid value in pg_probackup.conf
+        # invalid value in pg_backup.conf
         with open(conf_file, "a") as conf:
             conf.write("BACKUP_MODE=\n")
 
         try:
             self.backup_node(backup_dir, 'node', node, backup_type=None),
             # we should die here because exception is what we expect to happen
-            self.assertEqual(1, 0, "Expecting Error because of invalid backup-mode in pg_probackup.conf.\n Output: {0} \n CMD: {1}".format(
+            self.assertEqual(1, 0, "Expecting Error because of invalid backup-mode in pg_backup.conf.\n Output: {0} \n CMD: {1}".format(
                 repr(self.output), self.cmd))
         except ProbackupException as e:
             self.assertIn(
@@ -182,7 +182,7 @@ class OptionTest(ProbackupTest, unittest.TestCase):
                 e.message,
                 '\n Unexpected Error Message: {0}\n CMD: {1}'.format(repr(e.message), self.cmd))
 
-        # invalid value in pg_probackup.conf
+        # invalid value in pg_backup.conf
         with open(conf_file, "a") as conf:
             conf.write("SMOOTH_CHECKPOINT=FOO\n")
 
@@ -201,7 +201,7 @@ class OptionTest(ProbackupTest, unittest.TestCase):
         self.init_pb(backup_dir)
         self.add_instance(backup_dir, 'node', node)
 
-        # invalid option in pg_probackup.conf
+        # invalid option in pg_backup.conf
         with open(conf_file, "a") as conf:
             conf.write("TIMELINEID=1\n")
 

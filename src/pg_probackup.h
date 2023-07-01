@@ -63,7 +63,7 @@ extern const char  *PROGRAM_EMAIL;
 #define PG_TBLSPC_DIR			"pg_tblspc"
 #define PG_GLOBAL_DIR			"global"
 #define BACKUP_CONTROL_FILE		"backup.control"
-#define BACKUP_CATALOG_CONF_FILE	"pg_probackup.conf"
+#define BACKUP_CATALOG_CONF_FILE	"pg_backup.conf"
 #define BACKUP_LOCK_FILE		"backup.pid"
 #define BACKUP_RO_LOCK_FILE		"backup_ro.pid"
 #define DATABASE_FILE_LIST		"backup_content.control"
@@ -299,14 +299,16 @@ typedef enum ShowFormat
 #define BYTES_INVALID		(-1) /* file didn`t changed since previous backup, DELTA backup do not rely on it */
 #define FILE_NOT_FOUND		(-2) /* file disappeared during backup */
 #define BLOCKNUM_INVALID	(-1)
-#define PROGRAM_VERSION	"2.5.11"
+#define PROGRAM_VERSION		"2.5.11"
+#define PROGRAM_VERSION_NUM	20511
 
 /* update when remote agent API or behaviour changes */
-#define AGENT_PROTOCOL_VERSION 20600
-#define AGENT_PROTOCOL_VERSION_STR "2.6.0"
+#define AGENT_PROTOCOL_VERSION		"2.6.0"
+#define AGENT_PROTOCOL_VERSION_NUM	20600
 
 /* update only when changing storage format */
-#define STORAGE_FORMAT_VERSION "2.4.4"
+#define STORAGE_FORMAT_VERSION		"2.4.4"
+#define STORAGE_FORMAT_VERSION_NUM	20404
 
 typedef struct ConnectionOptions
 {
@@ -336,10 +338,11 @@ typedef struct ArchiveOptions
  */
 typedef struct InstanceConfig
 {
-	uint64		system_identifier;
-	uint32		xlog_seg_size;
+	uint64      system_identifier;
+	uint32      xlog_seg_size;
+	uint32      server_major_version;
 
-	char	   *pgdata;
+	char       *pgdata;
 	ConnectionOptions conn_opt;
 
 	/* Wait timeout for WAL segment archiving */
@@ -377,10 +380,10 @@ typedef struct PGNodeInfo
 	uint32			checksum_version;
 	bool			is_superuser;
 
-	int				server_version;
-	char			server_version_str[100];
+	char			server_version[50];
+	uint32			server_version_num;
 
-	int				ptrack_version_num;
+	uint32			ptrack_version_num;
 	bool			is_ptrack_enabled;
 	const char		*ptrack_schema; /* used only for ptrack 2.x */
 
@@ -453,8 +456,10 @@ struct pgBackup
 	uint32			block_size;
 	uint32			wal_block_size;
 	uint32			checksum_version;
-	char			program_version[100];
-	char			server_version[100];
+	char			server_version[50];
+	uint32          server_version_num;
+	char			program_version[50];
+	uint32			program_version_num;
 
 	bool			stream;			/* Was this backup taken in stream mode?
 									 * i.e. does it include all needed WAL files? */
@@ -938,6 +943,7 @@ extern void write_backup_filelist(pgBackup *backup, parray *files,
 
 extern void pgBackupCreateDir(pgBackup *backup, const char *backup_instance_path);
 extern void pgNodeInit(PGNodeInfo *node);
+extern void pgNodeFree(PGNodeInfo *node);
 extern void pgBackupInit(pgBackup *backup);
 extern void pgBackupFree(void *backup);
 extern int pgBackupCompareId(const void *f1, const void *f2);
@@ -1002,9 +1008,6 @@ extern pgFile *pgFileInit(const char *rel_path);
 extern void pgFileFree(void *file);
 
 extern pg_crc32 pgFileGetCRC32C(const char *file_path, bool missing_ok);
-#if PG_VERSION_NUM < 120000
-extern pg_crc32 pgFileGetCRC32(const char *file_path, bool missing_ok);
-#endif
 extern pg_crc32 pgFileGetCRC32Cgz(const char *file_path, bool missing_ok);
 
 extern int pgFileMapComparePath(const void *f1, const void *f2);
@@ -1046,7 +1049,7 @@ extern void backup_non_data_file_internal(const char *from_fullpath,
 extern size_t restore_data_file(parray *parent_chain, pgFile *dest_file, FILE *out,
 								const char *to_fullpath, bool use_bitmap, PageState *checksum_map,
 								XLogRecPtr shift_lsn, datapagemap_t *lsn_map, bool use_headers);
-extern size_t restore_data_file_internal(FILE *in, FILE *out, pgFile *file, uint32 backup_version,
+extern size_t restore_data_file_internal(FILE *in, FILE *out, pgFile *file, uint32 backup_version_num,
 										 const char *from_fullpath, const char *to_fullpath, int nblocks,
 										 datapagemap_t *map, PageState *checksum_map, int checksum_version,
 										 datapagemap_t *lsn_map, BackupPageHeader2 *headers);
@@ -1063,9 +1066,9 @@ extern PageState *get_checksum_map(const char *fullpath, uint32 checksum_version
 extern datapagemap_t *get_lsn_map(const char *fullpath, uint32 checksum_version,
 								  int n_blocks, XLogRecPtr shift_lsn, BlockNumber segmentno);
 extern bool validate_file_pages(pgFile *file, const char *fullpath, XLogRecPtr stop_lsn,
-							    uint32 checksum_version, uint32 backup_version, HeaderMap *hdr_map);
+							    uint32 checksum_version, uint32 backup_version_num, HeaderMap *hdr_map);
 
-extern BackupPageHeader2* get_data_file_headers(HeaderMap *hdr_map, pgFile *file, uint32 backup_version, bool strict);
+extern BackupPageHeader2* get_data_file_headers(HeaderMap *hdr_map, pgFile *file, bool strict);
 extern void write_page_headers(BackupPageHeader2 *headers, pgFile *file, HeaderMap *hdr_map, bool is_merge);
 extern void init_header_map(pgBackup *backup);
 extern void cleanup_header_map(HeaderMap *hdr_map);
@@ -1096,6 +1099,8 @@ extern XLogRecPtr get_next_record_lsn(const char *archivedir, XLogSegNo	segno, T
 									  uint32 wal_seg_size, int timeout, XLogRecPtr target);
 
 /* in util.c */
+extern uint32 get_pg_version(fio_location location, const char *pgdata_path);
+extern ControlFileData* get_ControlFileData(fio_location location, const char *pgdata_path, bool safe);
 extern TimeLineID get_current_timeline(PGconn *conn);
 extern TimeLineID get_current_timeline_from_control(fio_location location, const char *pgdata_path, bool safe);
 extern XLogRecPtr get_checkpoint_location(PGconn *conn);
@@ -1120,6 +1125,8 @@ extern const char *base36enc_to(long unsigned int value, char buf[ARG_SIZE_HINT 
 extern long unsigned int base36dec(const char *text);
 extern uint32 parse_server_version(const char *server_version_str);
 extern uint32 parse_program_version(const char *program_version);
+extern char* parse_program_version_new(uint32 program_version);
+extern char* parse_server_version_new(uint32 server_version);
 extern bool   parse_page(Page page, XLogRecPtr *lsn);
 extern int32  do_compress(void* dst, size_t dst_size, void const* src, size_t src_size,
 						  CompressAlg alg, int level, const char **errormsg);

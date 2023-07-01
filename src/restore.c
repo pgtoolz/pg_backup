@@ -44,15 +44,12 @@ print_recovery_settings(InstanceState *instanceState, FILE *fp, pgBackup *backup
 static void
 print_standby_settings_common(FILE *fp, pgBackup *backup, pgRestoreParams *params);
 
-#if PG_VERSION_NUM >= 120000
 static void
 update_recovery_options(InstanceState *instanceState, pgBackup *backup,
 						pgRestoreParams *params, pgRecoveryTarget *rt);
-#else
 static void
 update_recovery_options_before_v12(InstanceState *instanceState, pgBackup *backup,
 								   pgRestoreParams *params, pgRecoveryTarget *rt);
-#endif
 
 static void create_recovery_conf(InstanceState *instanceState, time_t backup_id,
 								 pgRecoveryTarget *rt,
@@ -651,12 +648,6 @@ do_restore_or_validate(InstanceState *instanceState, time_t target_backup_id, pg
 			dbOid_exclude_list = get_dbOid_exclude_list(dest_backup, params->partial_db_list,
 														params->partial_restore_type);
 
-		if (rt->lsn_string &&
-			parse_server_version(dest_backup->server_version) < 100000)
-			elog(ERROR, "Backup %s was created for version %s which doesn't support recovery_target_lsn",
-					 backup_id_of(dest_backup),
-					 dest_backup->server_version);
-
 		restore_chain(dest_backup, parent_chain, dbOid_exclude_list, params,
 					  instance_config.pgdata, no_sync, cleanup_pgdata, backup_has_tblspc);
 
@@ -755,18 +746,6 @@ restore_chain(pgBackup *dest_backup, parray *parent_chain,
 		 * using bsearch.
 		 */
 		parray_qsort(backup->files, pgFileCompareRelPath);
-	}
-
-	/* If dest backup version is older than 2.4.0, then bitmap optimization
-	 * is impossible to use, because bitmap restore rely on pgFile.n_blocks,
-	 * which is not always available in old backups.
-	 */
-	if (parse_program_version(dest_backup->program_version) < 20400)
-	{
-		use_bitmap = false;
-
-		if (params->incremental_mode != INCR_NONE)
-			elog(ERROR, "incremental restore is not possible for backups older than 2.3.0 version");
 	}
 
 	/* There is no point in bitmap restore, when restoring a single FULL backup,
@@ -1253,12 +1232,10 @@ create_recovery_conf(InstanceState *instanceState, time_t backup_id,
 		params->recovery_settings_mode = PITR_REQUESTED;
 
 	elog(LOG, "----------------------------------------");
-
-#if PG_VERSION_NUM >= 120000
-	update_recovery_options(instanceState, backup, params, rt);
-#else
-	update_recovery_options_before_v12(instanceState, backup, params, rt);
-#endif
+	if (backup->server_version_num >= 120000)
+		update_recovery_options(instanceState, backup, params, rt);
+	else
+		update_recovery_options_before_v12(instanceState, backup, params, rt);
 }
 
 
@@ -1364,7 +1341,6 @@ print_standby_settings_common(FILE *fp, pgBackup *backup, pgRestoreParams *param
 		fio_fprintf(fp, "primary_slot_name = '%s'\n", params->primary_slot_name);
 }
 
-#if PG_VERSION_NUM < 120000
 static void
 update_recovery_options_before_v12(InstanceState *instanceState, pgBackup *backup,
 								   pgRestoreParams *params, pgRecoveryTarget *rt)
@@ -1410,21 +1386,19 @@ update_recovery_options_before_v12(InstanceState *instanceState, pgBackup *backu
 		elog(ERROR, "cannot write file \"%s\": %s", path,
 			 strerror(errno));
 }
-#endif
 
 /*
  * Read postgresql.auto.conf, clean old recovery options,
  * to avoid unexpected intersections.
  * Write recovery options for this backup.
  */
-#if PG_VERSION_NUM >= 120000
 static void
 update_recovery_options(InstanceState *instanceState, pgBackup *backup,
 						pgRestoreParams *params, pgRecoveryTarget *rt)
 
 {
 	char		postgres_auto_path[MAXPGPATH];
-	char		postgres_auto_path_tmp[MAXPGPATH];
+	char		postgres_auto_path_tmp[MAXPGPATH+10];
 	char		path[MAXPGPATH];
 	FILE	   *fp = NULL;
 	FILE	   *fp_tmp = NULL;
@@ -1580,7 +1554,6 @@ update_recovery_options(InstanceState *instanceState, pgBackup *backup,
 		}
 	}
 }
-#endif
 
 /*
  * Try to read a timeline's history file.

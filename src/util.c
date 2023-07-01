@@ -163,6 +163,51 @@ get_current_timeline(PGconn *conn)
 }
 
 /* Get timeline from pg_control file */
+ControlFileData*
+get_ControlFileData(fio_location location, const char *pgdata_path, bool safe)
+{
+	size_t           size;
+	char            *buffer;
+	ControlFileData *ControlFile = NULL;
+
+	/* First fetch file... */
+	buffer = slurpFile(location, pgdata_path, XLOG_CONTROL_FILE, &size, safe);
+	if (safe && buffer == NULL)
+		return NULL;
+
+	ControlFile = pg_malloc(sizeof(ControlFileData));
+	digestControlFile(ControlFile, buffer, size);
+	pg_free(buffer);
+
+	return ControlFile;
+}
+
+/* Get PostgreSQL major version from PG_VERSION file */
+uint32
+get_pg_version(fio_location location, const char *pgdata_path)
+{
+	uint32  pg_version_num = 0;
+	char   *pg_version = NULL;
+	char   *buffer = NULL;
+	size_t  size = 0;
+	int     res = 0;
+
+	/* First fetch file... */
+	buffer = slurpFile(location, pgdata_path, "PG_VERSION", &size, false);
+	if (size == 0)
+		elog(ERROR, "PG_VERSION file is empty");
+
+	pg_version = pg_malloc(size);
+	res = sscanf(buffer, "%s\n", pg_version);
+	if (res != 1)
+		elog(ERROR, "Cannot scan content of PG_VERSION file");
+
+	pg_version_num = (uint32) atoi(pg_version);
+	pg_free(pg_version);
+	return pg_version_num;
+}
+
+/* Get timeline from pg_control file */
 TimeLineID
 get_current_timeline_from_control(fio_location location, const char *pgdata_path, bool safe)
 {
@@ -288,7 +333,6 @@ get_pgcontrol_checksum(const char *pgdata_path)
 
 	/* First fetch file... */
 	buffer = slurpFile(FIO_BACKUP_HOST, pgdata_path, XLOG_CONTROL_FILE, &size, false);
-	elog(WARNING, "checking %s", pgdata_path);
 	digestControlFile(&ControlFile, buffer, size);
 	pg_free(buffer);
 
@@ -400,29 +444,18 @@ copy_pgcontrol_file(fio_location from_location, const char *from_fullpath,
  * Parse string representation of the server version.
  */
 uint32
-parse_server_version(const char *server_version_str)
+parse_server_version(const char *server_version)
 {
 	int			nfields;
 	uint32		result = 0;
 	int			major_version = 0;
 	int			minor_version = 0;
 
-	nfields = sscanf(server_version_str, "%d.%d", &major_version, &minor_version);
+	nfields = sscanf(server_version, "%d.%d", &major_version, &minor_version);
 	if (nfields == 2)
-	{
-		/* Server version lower than 10 */
-		if (major_version > 10)
-			elog(ERROR, "Server version format doesn't match major version %d", major_version);
 		result = major_version * 10000 + minor_version * 100;
-	}
-	else if (nfields == 1)
-	{
-		if (major_version < 10)
-			elog(ERROR, "Server version format doesn't match major version %d", major_version);
-		result = major_version * 10000;
-	}
 	else
-		elog(ERROR, "Unknown server version format %s", server_version_str);
+		elog(WARNING, "Unknown server version format %s", server_version);
 
 	return result;
 }
@@ -446,9 +479,50 @@ parse_program_version(const char *program_version)
 	if (nfields == 3)
 		result = major * 10000 + minor * 100 + micro;
 	else
-		elog(ERROR, "Unknown program version format %s", program_version);
+		elog(WARNING, "Unknown program version format %s", program_version);
 
 	return result;
+}
+
+/*
+ * Parse numeric PostgreSQL server version into string representation.
+ * 130000
+ * 130009
+ */
+char *
+parse_server_version_new(uint32 server_version_num)
+{
+	char *server_version = NULL;
+
+	if (server_version_num >= 100000)
+	{
+		server_version = pgut_malloc0(50);
+		snprintf(server_version, 50, "%d.%d",
+			server_version_num / 10000, server_version_num % 1000);
+	}
+	return server_version;
+}
+
+/*
+ * Parse numeric program version into string representation.
+ * 2.5.11
+ * 2 * 10000, 5 * 1000, 11
+ * 205011 into "2.5.11"
+ */
+char *
+parse_program_version_new(uint32 program_version_num)
+{
+	char *program_version = NULL;
+
+	if (program_version > 0)
+	{
+		program_version = pgut_malloc0(100);
+		snprintf(program_version, sizeof(100), "%d.%d.%d",
+			program_version_num / 10000,
+			(program_version_num / 100) % 100,
+			program_version_num % 100);
+	}
+	return program_version;
 }
 
 const char *

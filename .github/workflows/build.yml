@@ -3,7 +3,7 @@ on: [push]
 
 jobs:
   pg-10:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     env:
         PG_TAG: REL_10_20
         PG_VERSION: 10

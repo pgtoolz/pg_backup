@@ -489,8 +489,7 @@ merge_chain(InstanceState *instanceState,
 	{
 		pgBackup   *backup = (pgBackup *) parray_get(parent_chain, i);
 
-		if (parse_program_version(backup->program_version) >
-			parse_program_version(PROGRAM_VERSION))
+		if (backup->program_version_num > PROGRAM_VERSION_NUM)
 		{
 			elog(ERROR, "Backup %s has been produced by %s version %s, "
 						"but current program version is %s. Forward compatibility "
@@ -517,19 +516,6 @@ merge_chain(InstanceState *instanceState,
 	 * then in-place merge is not possible.
 	 */
 	program_version_match = is_forward_compatible(parent_chain);
-
-	/* Forbid merge retry for failed merges between 2.4.0 and any
-	 * older version. Several format changes makes it impossible
-	 * to determine the exact format any speific file is got.
-	 */
-	if (is_retry &&
-		parse_program_version(dest_backup->program_version) >= 20400 &&
-		parse_program_version(full_backup->program_version) < 20400)
-	{
-		elog(ERROR, "Retry of failed merge for backups with different between minor "
-			"versions is forbidden to avoid data corruption because of storage format "
-			"changes introduced in 2.4.0 version, please take a new full backup");
-	}
 
 	/*
 	 * Validate or revalidate all members of parent chain
@@ -591,10 +577,6 @@ merge_chain(InstanceState *instanceState,
 	/* Create directories */
 	create_data_directories(dest_backup->files, full_database_dir,
 							dest_backup->root_dir, false, false, FIO_BACKUP_HOST, NULL);
-
-	/* bitmap optimization rely on n_blocks, which is generally available since 2.3.0 */
-	if (parse_program_version(dest_backup->program_version) < 20300)
-		use_bitmap = false;
 
 	/* Setup threads */
 	for (i = 0; i < parray_num(dest_backup->files); i++)
@@ -686,7 +668,11 @@ merge_chain(InstanceState *instanceState,
 	 * because it still has old start_time.
 	 */
 	strlcpy(full_backup->program_version, PROGRAM_VERSION,
-			sizeof(full_backup->program_version));
+			sizeof(PROGRAM_VERSION));
+	full_backup->program_version_num = dest_backup->program_version_num;
+	strlcpy(full_backup->server_version, dest_backup->server_version,
+			sizeof(dest_backup->server_version));
+	full_backup->server_version_num = dest_backup->server_version_num;
 	full_backup->parent_backup = INVALID_BACKUP_ID;
 	full_backup->start_lsn = dest_backup->start_lsn;
 	full_backup->stop_lsn = dest_backup->stop_lsn;
@@ -1016,9 +1002,7 @@ merge_files(void *arg)
 
 				/* Copy header metadata from old map into a new one */
 				tmp_file->n_headers = file->n_headers;
-				headers = get_data_file_headers(&(arguments->full_backup->hdr_map), file,
-						parse_program_version(arguments->full_backup->program_version),
-						true);
+				headers = get_data_file_headers(&(arguments->full_backup->hdr_map), file, true);
 
 				/* sanity */
 				if (!headers && file->n_headers > 0)
@@ -1122,20 +1106,8 @@ merge_data_file(parray *parent_chain, pgBackup *full_backup,
 		elog(ERROR, "Cannot remove file \"%s\": %s", to_fullpath_tmp1,
 			 strerror(errno));
 
-	/*
-	 * In old (=<2.2.7) versions of pg_probackup n_blocks attribute of files
-	 * in PAGE and PTRACK wasn`t filled.
-	 */
-	//Assert(tmp_file->n_blocks == dest_file->n_blocks);
-
-	/* Backward compatibility kludge:
-	 * When merging old backups, it is possible that
-	 * to_fullpath_tmp2 size will be 0, and so it will be
-	 * truncated in backup_data_file().
-	 * TODO: remove in 3.0.0
-	 */
-	if (tmp_file->write_size == 0)
-		return;
+	/* sanity */
+	Assert(tmp_file->n_blocks == dest_file->n_blocks);
 
 	/* sync second temp file to disk */
 	if (!no_sync && fio_sync(FIO_BACKUP_HOST, to_fullpath_tmp2) != 0)
@@ -1255,12 +1227,12 @@ is_forward_compatible(parray *parent_chain)
 {
 	int       i;
 	pgBackup *oldest_ver_backup = NULL;
-	uint32    oldest_ver_in_chain = parse_program_version(PROGRAM_VERSION);
+	uint32    oldest_ver_in_chain = PROGRAM_VERSION_NUM;
 
 	for (i = 0; i < parray_num(parent_chain); i++)
 	{
 		pgBackup *backup = (pgBackup *) parray_get(parent_chain, i);
-		uint32 current_version = parse_program_version(backup->program_version);
+		uint32 current_version = backup->program_version_num;
 
 		if (!oldest_ver_backup)
 			oldest_ver_backup = backup;
@@ -1272,7 +1244,7 @@ is_forward_compatible(parray *parent_chain)
 		}
 	}
 
-	if (oldest_ver_in_chain < parse_program_version(STORAGE_FORMAT_VERSION))
+	if (oldest_ver_in_chain < STORAGE_FORMAT_VERSION_NUM)
 	{
 		elog(WARNING, "In-place merge is disabled because of storage format incompatibility. "
 					"Backup %s storage format version: %s, "
