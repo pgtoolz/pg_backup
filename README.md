@@ -83,7 +83,7 @@ cd <path_to_PostgreSQL_source_tree> && git clone https://github.com/pgtoolz/pg_b
 
 ## License
 
-This module is available under the [license](LICENSE.postgresql) similar to [PostgreSQL](https://www.postgresql.org/about/license/), but all modification since 18 June 2023 are available under the [GPLv3 license](LICENSE).
+This module is available under the [license](LICENSE.postgresql) similar to [PostgreSQL](https://www.postgresql.org/about/license/), but all modification since 18 July 2023 are available under the [GPLv3 license](LICENSE).
 
 ## Feedback
 
