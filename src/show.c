@@ -202,22 +202,22 @@ pretty_size(int64 size, char *buf, size_t len)
 		return;
 	}
 
-	if (Abs(size) < limit)
+	if (llabs(size) < limit)
 		snprintf(buf, len, "%dB", (int) size);
 	else
 	{
 		size >>= 9;
-		if (Abs(size) < limit2)
+		if (llabs(size) < limit2)
 				snprintf(buf, len, "%dkB", (int) half_rounded(size));
 		else
 		{
 			size >>= 10;
-			if (Abs(size) < limit2)
+			if (llabs(size) < limit2)
 				snprintf(buf, len, "%dMB", (int) half_rounded(size));
 			else
 			{
 				size >>= 10;
-				if (Abs(size) < limit2)
+				if (llabs(size) < limit2)
 					snprintf(buf, len, "%dGB", (int) half_rounded(size));
 				else
 				{

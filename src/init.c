@@ -69,7 +69,7 @@ do_add_instance(InstanceState *instanceState, InstanceConfig *instance)
 	if (instance->server_major_version >= 11)
 		instance->xlog_seg_size = ControlFile->xlog_seg_size;
 	else
-		instance->xlog_seg_size = XLOG_SEG_SIZE;
+		instance->xlog_seg_size = DEFAULT_XLOG_SEG_SIZE;
 
 	/* Ensure that all root directories already exist */
 	/* TODO maybe call do_init() here instead of error?*/

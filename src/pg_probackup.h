@@ -134,6 +134,10 @@ extern const char  *PROGRAM_EMAIL;
 #define TC_CYAN_BOLD "\033[1;36m"
 #define TC_RESET "\033[0m"
 
+#ifndef DEFAULT_XLOG_SEG_SIZE
+#define DEFAULT_XLOG_SEG_SIZE    (16*1024*1024)
+#endif
+
 typedef struct RedoParams
 {
 	TimeLineID  tli;
