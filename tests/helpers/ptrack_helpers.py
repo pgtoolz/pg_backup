@@ -112,7 +112,6 @@ class PostgresNodeExtended(testgres.PostgresNode):
 
     def __init__(self, base_dir=None, *args, **kwargs):
         super(PostgresNodeExtended, self).__init__(name='test', base_dir=base_dir, *args, **kwargs)
-        self.is_started = False
 
     def slow_start(self, replica=False):
 
@@ -150,13 +149,11 @@ class PostgresNodeExtended(testgres.PostgresNode):
     def start(self, *args, **kwargs):
         if not self.is_started:
             super(PostgresNodeExtended, self).start(*args, **kwargs)
-            self.is_started = True
         return self
 
     def stop(self, *args, **kwargs):
         if self.is_started:
             result = super(PostgresNodeExtended, self).stop(*args, **kwargs)
-            self.is_started = False
             return result
 
     def kill(self, someone = None):
@@ -165,7 +162,6 @@ class PostgresNodeExtended(testgres.PostgresNode):
                 os.kill(self.pid, signal.SIGKILL)
             else:
                 os.kill(self.auxiliary_pids[someone][0], signal.SIGKILL)
-            self.is_started = False
 
     def table_checksum(self, table, dbname="postgres"):
         con = self.connect(dbname=dbname)

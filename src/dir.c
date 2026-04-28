@@ -189,6 +189,7 @@ pgFileInit(const char *rel_path)
 	// May be add?
 	// pg_atomic_clear_flag(file->lock);
 	file->excluded = false;
+	file->is_datafile = false;
 	return file;
 }
 
@@ -627,22 +628,14 @@ dir_check_file(pgFile *file, bool backup_logs)
 	{
 		if (strcmp(file->name, "pg_internal.init") == 0)
 			return CHECK_FALSE;
-		/* Do not backup ptrack2.x temp map files */
-//		else if (strcmp(file->name, "ptrack.map") == 0)
-//			return CHECK_FALSE;
-		else if (strcmp(file->name, "ptrack.map.mmap") == 0)
-			return CHECK_FALSE;
-		else if (strcmp(file->name, "ptrack.map.tmp") == 0)
-			return CHECK_FALSE;
 		/* Do not backup temp files */
 		else if (file->name[0] == 't' && isdigit(file->name[1]))
 			return CHECK_FALSE;
+		/* if filename starts with digits, it can be either datafile or fork */
 		else if (isdigit(file->name[0]))
 		{
 			set_forkname(file);
-
-			if (file->forkName == ptrack) /* Compatibility with left-overs from ptrack1 */
-				return CHECK_FALSE;
+			file->is_datafile = file->forkName == none;
 		}
 	}
 
@@ -1633,7 +1626,7 @@ is_forkname(char *name, size_t *pos, const char *forkname)
 #define SEGNOCHARS 5 /* when BLCKSZ == (1<<15) */
 
 /* Set forkName if possible */
-bool
+void
 set_forkname(pgFile *file)
 {
 	size_t i = 0;
@@ -1643,16 +1636,15 @@ set_forkname(pgFile *file)
 	/* pretend it is not relation file */
 	file->relOid = 0;
 	file->forkName = none;
-	file->is_datafile = false;
 
 	for (i = 0; isdigit(file->name[i]); i++)
 	{
 		if (i == 0 && file->name[i] == '0')
-			return false;
+			return;
 		oid = oid * 10 + file->name[i] - '0';
 	}
 	if (i == 0 || i > OIDCHARS || oid > UINT32_MAX)
-		return false;
+		return;
 
 	/* usual fork name */
 	/* /^\d+_(vm|fsm|init|ptrack)$/ */
@@ -1673,22 +1665,21 @@ set_forkname(pgFile *file)
 		for (i++; isdigit(file->name[i]); i++)
 		{
 			if (i == start && file->name[i] == '0')
-				return false;
+				return;
 			segno = segno * 10 + file->name[i] - '0';
 		}
 		if (i - start > SEGNOCHARS || segno > MAXSEGNO)
-			return false;
+			return;
 	}
 
 	/* If there are excess characters, it is not relation file */
 	if (file->name[i] != 0)
 	{
 		file->forkName = none;
-		return false;
+		return;
 	}
 
 	file->relOid = oid;
 	file->segno = segno;
-	file->is_datafile = file->forkName == none;
-	return true;
+	return;
 }
