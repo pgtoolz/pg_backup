@@ -1,12 +1,38 @@
 name: regression
-on: [push]
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  workflow_dispatch:
 
 jobs:
-  pg-10:
+  test:
+    name: PostgreSQL ${{ matrix.pg_version }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pg_version: 10
+            pg_tag: REL_10_20
+          - pg_version: 11
+            pg_tag: REL_11_15
+          - pg_version: 12
+            pg_tag: REL_12_10
+          - pg_version: 13
+            pg_tag: REL_13_6
+          - pg_version: 14
+            pg_tag: REL_14_2
+          - pg_version: 15
+            pg_tag: REL_15_0
+          - pg_version: 16
+            pg_tag: REL_16_1
     env:
-        PG_TAG: REL_10_20
-        PG_VERSION: 10
+      PG_VERSION: ${{ matrix.pg_version }}
+      PG_TAG: ${{ matrix.pg_tag }}
     steps:
     - name: Checkout
       uses: actions/checkout@v3

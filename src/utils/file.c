@@ -4,6 +4,7 @@
 #include <signal.h>
 
 #include "pg_probackup.h"
+#include "utils/direct_io.h"
 
 #include "file.h"
 #include "storage/checksum.h"
@@ -2221,13 +2222,11 @@ fio_copy_pages(const char *to_fullpath, const char *from_fullpath, pgFile *file,
 static void
 fio_send_pages_impl(int out, char* buf)
 {
-	FILE        *in = NULL;
+	DirectIOBuffer dio = {0};
 	BlockNumber  blknum = 0;
-	int          current_pos = 0;
 	BlockNumber  n_blocks_read = 0;
 	PageState    page_st;
 	char         read_buffer[BLCKSZ+1];
-	char         in_buf[STDIO_BUFSIZE];
 	fio_header   hdr;
 	fio_send_request *req = (fio_send_request*) buf;
 	char             *from_fullpath = (char*) buf + sizeof(fio_send_request);
@@ -2242,9 +2241,11 @@ fio_send_pages_impl(int out, char* buf)
 	int32       cur_pos_out = 0;
 	BackupPageHeader2 *headers = NULL;
 
+	dio_buffer_init(&dio, 1024 * 1024); /* 1MB buffer */
+
 	/* open source file */
-	in = fopen(from_fullpath, PG_BINARY_R);
-	if (!in)
+	dio.fd = dio_open_file(from_fullpath, O_RDONLY, 0);
+	if (dio.fd < 0)
 	{
 		hdr.cop = FIO_ERROR;
 
@@ -2284,11 +2285,7 @@ fio_send_pages_impl(int out, char* buf)
 		/* get first block */
 		iter = datapagemap_iterate(map);
 		datapagemap_next(iter, &blknum);
-
-		setvbuf(in, NULL, _IONBF, BUFSIZ);
 	}
-	else
-		setvbuf(in, in_buf, _IOFBF, STDIO_BUFSIZE);
 
 	/* TODO: what is this barrier for? */
 	read_buffer[BLCKSZ] = 1; /* barrier */
@@ -2296,7 +2293,7 @@ fio_send_pages_impl(int out, char* buf)
 	while (blknum < req->nblocks)
 	{
 		int    rc = 0;
-		size_t read_len = 0;
+		ssize_t read_len = 0;
 		int    retry_attempts = PAGE_READ_ATTEMPTS;
 
 		/* TODO: handle signals on the agent */
@@ -2307,23 +2304,15 @@ fio_send_pages_impl(int out, char* buf)
 		for (;;)
 		{
 			/*
-			 * Optimize stdio buffer usage, fseek only when current position
-			 * does not match the position of requested block.
+			 * Pre-read logic: if we are using pagemap, we might want to
+			 * ensure that the buffer is filled with useful data.
+			 * However, dio_buffer_read_block already handles caching.
+			 * We can just call it.
 			 */
-			if (current_pos != blknum*BLCKSZ)
-			{
-				current_pos = blknum*BLCKSZ;
-				if (fseek(in, current_pos, SEEK_SET) != 0)
-					elog(ERROR, "fseek to position %u is failed on remote file '%s': %s",
-							current_pos, from_fullpath, strerror(errno));
-			}
-
-			read_len = fread(read_buffer, 1, BLCKSZ, in);
-
-			current_pos += read_len;
+			read_len = dio_buffer_read_block(&dio, read_buffer, (off_t)blknum * BLCKSZ, BLCKSZ);
 
 			/* report error */
-			if (ferror(in))
+			if (read_len < 0)
 			{
 				hdr.cop = FIO_ERROR;
 				hdr.arg = READ_FAILED;
@@ -2353,7 +2342,7 @@ fio_send_pages_impl(int out, char* buf)
 					break;
 			}
 
-			if (feof(in))
+			if (read_len < BLCKSZ)
 				goto eof;
 //		  	else /* readed less than BLKSZ bytes, retry */
 
@@ -2474,8 +2463,9 @@ cleanup:
 	pg_free(iter);
 	pg_free(errormsg);
 	pg_free(headers);
-	if (in)
-		fclose(in);
+	if (dio.fd != -1)
+		close(dio.fd);
+	dio_buffer_cleanup(&dio);
 	return;
 }
 
