@@ -287,7 +287,20 @@ pgBackupValidateFiles(void *arg)
 		 * If option skip-block-validation is set, compute only file-level CRC for
 		 * datafiles, otherwise check them block by block.
 		 */
-		if (!file->is_datafile || skip_block_validation)
+		if (file->is_datafile && !skip_block_validation)
+		{
+			/*
+			 * validate relation block by block
+			 * check page headers, checksums (if enabled)
+			 * and compute checksum of the file
+			 */
+			if (!validate_file_pages(file, file_fullpath, arguments->stop_lsn,
+								  arguments->checksum_version,
+								  arguments->program_version_num,
+								  arguments->hdr_map))
+				arguments->corrupted = true;
+		}
+		else
 		{
 			if (strcmp(file->rel_path, XLOG_CONTROL_FILE) == 0)
 				crc = get_pgcontrol_checksum(arguments->base_path);
@@ -300,19 +313,6 @@ pgBackupValidateFiles(void *arg)
 						file_fullpath, crc, file->crc);
 				arguments->corrupted = true;
 			}
-		}
-		else
-		{
-			/*
-			 * validate relation block by block
-			 * check page headers, checksums (if enabled)
-			 * and compute checksum of the file
-			 */
-			if (!validate_file_pages(file, file_fullpath, arguments->stop_lsn,
-								  arguments->checksum_version,
-								  arguments->program_version_num,
-								  arguments->hdr_map))
-				arguments->corrupted = true;
 		}
 	}
 

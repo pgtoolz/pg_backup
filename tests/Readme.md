@@ -8,7 +8,7 @@ Note: tests require python3 to work properly.
 
 ```
 Check physical correctness of restored instances:
- Apply this patch to disable HINT BITS: https://gist.github.com/gsmol/2bb34fd3ba31984369a72cc1c27a36b6
+ Apply this patch to disable HINT BITS: https://gist.github.com/gsmolk/2bb34fd3ba31984369a72cc1c27a36b6
  export PG_PROBACKUP_PARANOIA=ON
 
 Check archive compression:
