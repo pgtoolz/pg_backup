@@ -996,7 +996,11 @@ handle_interrupt(SIGNAL_ARGS)
 static void
 init_cancel_handler(void)
 {
+#if PG_VERSION_NUM >= 180000
+	oldhandler = signal(SIGINT, handle_interrupt);
+#else
 	oldhandler = pqsignal(SIGINT, handle_interrupt);
+#endif
 	pqsignal(SIGQUIT, handle_interrupt);
 	pqsignal(SIGTERM, handle_interrupt);
 	pqsignal(SIGPIPE, handle_interrupt);
